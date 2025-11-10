@@ -3,12 +3,13 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { ThemeToggle } from '../Header';
 
-const LoginPage: React.FC = () => {
+const SignupPage: React.FC = () => {
+  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const navigate = useNavigate();
+  const [success, setSuccess] = useState(false);
   const auth = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -17,12 +18,11 @@ const LoginPage: React.FC = () => {
     setLoading(true);
     
     try {
-      const user = await auth.login(email, password);
-      if (user) {
-        // App.tsx routing will handle redirection based on role and status
-        navigate('/');
+      const newUser = await auth.signup(name, email, password);
+      if (newUser) {
+        setSuccess(true);
       } else {
-        setError('Invalid email or password.');
+        setError('An account with this email already exists.');
       }
     } catch (err) {
       setError('An error occurred. Please try again.');
@@ -31,9 +31,23 @@ const LoginPage: React.FC = () => {
     }
   };
 
+  if (success) {
+    return (
+        <div className="min-h-screen flex items-center justify-center bg-background p-4 font-sans">
+            <div className="max-w-md w-full text-center bg-card p-8 rounded-2xl shadow-xl border border-border">
+                 <h1 className="text-2xl font-bold text-primary mb-4">Registration Successful!</h1>
+                 <p className="text-muted-foreground mb-6">Your account has been created and is now awaiting approval from an administrator.</p>
+                 <Link to="/login" className="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-primary-foreground bg-primary hover:bg-primary/90">
+                    Back to Login
+                </Link>
+            </div>
+        </div>
+    )
+  }
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4 font-sans">
-      <div className="absolute top-4 right-4">
+       <div className="absolute top-4 right-4">
           <ThemeToggle />
       </div>
       <div className="max-w-md w-full">
@@ -42,11 +56,25 @@ const LoginPage: React.FC = () => {
             Pine Stays
           </h1>
           <p className="mt-2 text-muted-foreground">
-            Admin, Agent & Owner Portal
+            Agent Account Registration
           </p>
         </div>
-        <div className="bg-card border border-border rounded-2xl shadow-xl p-6 sm:p-8 space-y-6">
+        <div className="bg-card rounded-2xl shadow-xl p-6 sm:p-8 space-y-6 border border-border">
           <form onSubmit={handleSubmit} className="space-y-6">
+             <div>
+              <label className="block text-sm font-medium text-foreground mb-1" htmlFor="name">
+                Full Name
+              </label>
+              <input
+                className="w-full px-4 py-2.5 border border-input rounded-lg shadow-sm bg-background placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                id="name"
+                type="text"
+                placeholder="John Doe"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                required
+              />
+            </div>
             <div>
               <label className="block text-sm font-medium text-foreground mb-1" htmlFor="email">
                 Email Address
@@ -79,19 +107,19 @@ const LoginPage: React.FC = () => {
             
             <div>
               <button
-                className={`w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-primary-foreground bg-primary hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-ring transition-colors ${loading ? 'opacity-60 cursor-not-allowed' : ''}`}
+                className={`w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-primary-foreground bg-primary hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-ring transition duration-150 ease-in-out ${loading ? 'opacity-60 cursor-not-allowed' : ''}`}
                 type="submit"
                 disabled={loading}
               >
-                {loading ? 'Signing in...' : 'Sign In'}
+                {loading ? 'Creating Account...' : 'Create Account'}
               </button>
             </div>
           </form>
            <div className="text-center text-sm">
                 <p className="text-muted-foreground">
-                    Agent?{' '}
-                    <Link to="/signup" className="font-medium text-primary hover:text-primary/90">
-                        Create an account
+                    Already have an account?{' '}
+                    <Link to="/login" className="font-medium text-primary hover:text-primary/90">
+                        Sign In
                     </Link>
                 </p>
             </div>
@@ -101,4 +129,4 @@ const LoginPage: React.FC = () => {
   );
 };
 
-export default LoginPage;
+export default SignupPage;

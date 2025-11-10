@@ -1,10 +1,17 @@
-import { Property, CalendarEntry, CalendarStatus } from '../types';
+import { Property, CalendarEntry, CalendarStatus, User, UserRole, UserStatus } from '../types';
 
 // --- HELPER FUNCTIONS ---
 const generateId = () => Math.random().toString(36).substr(2, 9);
 const formatDate = (date: Date) => date.toISOString().split('T')[0];
 
 // --- SAMPLE DATA ---
+const sampleUsers: User[] = [
+    { id: 'user1', email: 'admin@pinestays.com', password: 'password123', name: 'Admin User', role: 'admin', status: 'active' },
+    { id: 'user2', email: 'agent@pinestays.com', password: 'password123', name: 'Agent Smith', role: 'agent', status: 'active' },
+    { id: 'user3', email: 'pending@pinestays.com', password: 'password123', name: 'Pending Agent', role: 'agent', status: 'pending' },
+    { id: 'user4', email: 'owner@pinestays.com', password: 'password123', name: 'Property Owner', role: 'owner', status: 'active' },
+];
+
 const sampleProperties: Property[] = [
   {
     id: 'prop1',
@@ -29,6 +36,7 @@ const sampleProperties: Property[] = [
     menuCardLink: '#',
     inRoomDining: 'Available from 7 AM to 11 PM on request.',
     status: 'active',
+    ownerId: 'user4',
   },
   {
     id: 'prop2',
@@ -70,6 +78,7 @@ const sampleProperties: Property[] = [
     videoLink: '',
     amenities: ['WiFi', 'AC', 'Kitchen', 'Parking'],
     status: 'active',
+    ownerId: 'user4',
   },
   {
     id: 'prop4',
@@ -165,6 +174,7 @@ const generateSampleCalendar = (): CalendarEntry[] => {
 class DatabaseService {
   private properties: Property[] = [];
   private calendars: CalendarEntry[] = [];
+  private users: User[] = [];
 
   constructor() {
     this.loadData();
@@ -174,19 +184,23 @@ class DatabaseService {
     try {
       const storedProperties = localStorage.getItem('pine_stays_properties');
       const storedCalendars = localStorage.getItem('pine_stays_calendars');
+      const storedUsers = localStorage.getItem('pine_stays_users');
 
-      if (storedProperties && storedCalendars) {
+      if (storedProperties && storedCalendars && storedUsers) {
         this.properties = JSON.parse(storedProperties);
         this.calendars = JSON.parse(storedCalendars);
+        this.users = JSON.parse(storedUsers);
       } else {
         this.properties = sampleProperties;
         this.calendars = generateSampleCalendar();
+        this.users = sampleUsers;
         this.saveData();
       }
     } catch (error) {
       console.error("Failed to load data from localStorage", error);
       this.properties = sampleProperties;
       this.calendars = generateSampleCalendar();
+      this.users = sampleUsers;
     }
   }
 
@@ -194,7 +208,9 @@ class DatabaseService {
     try {
       localStorage.setItem('pine_stays_properties', JSON.stringify(this.properties));
       localStorage.setItem('pine_stays_calendars', JSON.stringify(this.calendars));
-    } catch (error) {
+      localStorage.setItem('pine_stays_users', JSON.stringify(this.users));
+    } catch (error)
+      {
       console.error("Failed to save data to localStorage", error);
     }
   }
@@ -203,6 +219,40 @@ class DatabaseService {
     return new Promise(resolve => setTimeout(() => resolve(data), 200 + Math.random() * 300));
   }
   
+  // --- User Methods ---
+  async getUsers(): Promise<User[]> {
+      return this.simulateDelay([...this.users]);
+  }
+  
+  async getUserById(userId: string): Promise<User | undefined> {
+      const user = this.users.find(u => u.id === userId);
+      return this.simulateDelay(user ? {...user} : undefined);
+  }
+
+  async getUserByEmailAndPassword(email: string, pass: string): Promise<User | null> {
+    const user = this.users.find(u => u.email.toLowerCase() === email.toLowerCase() && u.password === pass);
+    return this.simulateDelay(user ? { ...user } : null);
+  }
+
+  async addUser(userData: Omit<User, 'id'>): Promise<User> {
+    const existingUser = this.users.find(u => u.email.toLowerCase() === userData.email.toLowerCase());
+    if (existingUser) {
+        throw new Error("User with this email already exists.");
+    }
+    const newUser: User = { ...userData, id: generateId() };
+    this.users.push(newUser);
+    this.saveData();
+    return this.simulateDelay(newUser);
+  }
+  
+  async updateUser(userId: string, updates: Partial<User>): Promise<User> {
+    const index = this.users.findIndex(u => u.id === userId);
+    if (index === -1) throw new Error("User not found");
+    this.users[index] = { ...this.users[index], ...updates };
+    this.saveData();
+    return this.simulateDelay(this.users[index]);
+  }
+
   // --- Property Methods ---
   async getProperties(): Promise<Property[]> {
     return this.simulateDelay([...this.properties]);

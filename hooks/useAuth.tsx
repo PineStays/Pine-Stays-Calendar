@@ -1,47 +1,87 @@
-import React, { createContext, useState, useContext, ReactNode, useEffect } from 'react';
+import React, { createContext, useState, useContext, ReactNode, useEffect, useCallback } from 'react';
+import { User, UserRole, UserStatus } from '../types';
+import { db } from '../services/databaseService';
 
 interface AuthContextType {
-  isAuthenticated: boolean;
+  user: User | null;
   loading: boolean;
-  login: (password: string) => Promise<boolean>;
+  login: (email: string, password: string) => Promise<User | null>;
+  signup: (name: string, email: string, password: string) => Promise<User | null>;
   logout: () => void;
+  updateUserInContext: (updates: Partial<User>) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    // Check session storage on initial load
-    const storedAuth = sessionStorage.getItem('pine_stays_auth');
-    if (storedAuth === 'true') {
-      setIsAuthenticated(true);
-    }
-    setLoading(false);
-  }, []);
-
-  const login = async (password: string): Promise<boolean> => {
+  const checkSession = useCallback(async () => {
     setLoading(true);
-    // Simple password check for demo purposes
-    if (password === 'password123') {
-      setIsAuthenticated(true);
-      sessionStorage.setItem('pine_stays_auth', 'true');
+    try {
+        const storedUserId = sessionStorage.getItem('pine_stays_userId');
+        if (storedUserId) {
+            const sessionUser = await db.getUserById(storedUserId);
+            if (sessionUser) {
+                setUser(sessionUser);
+            }
+        }
+    } catch (e) {
+        console.error("Session check failed", e);
+        setUser(null);
+        sessionStorage.removeItem('pine_stays_userId');
+    } finally {
+        setLoading(false);
+    }
+  }, []);
+  
+  useEffect(() => {
+    checkSession();
+  }, [checkSession]);
+
+  const login = async (email: string, password: string): Promise<User | null> => {
+    setLoading(true);
+    const loggedInUser = await db.getUserByEmailAndPassword(email, password);
+    if (loggedInUser) {
+      setUser(loggedInUser);
+      sessionStorage.setItem('pine_stays_userId', loggedInUser.id);
       setLoading(false);
-      return true;
+      return loggedInUser;
     }
     setLoading(false);
-    return false;
+    return null;
+  };
+  
+  const signup = async (name: string, email: string, password: string): Promise<User | null> => {
+    try {
+      const newUser = await db.addUser({
+        name,
+        email,
+        password,
+        role: 'agent',
+        status: 'pending'
+      });
+      return newUser;
+    } catch (error) {
+      console.error("Signup failed:", error);
+      return null;
+    }
   };
 
   const logout = () => {
-    setIsAuthenticated(false);
-    sessionStorage.removeItem('pine_stays_auth');
+    setUser(null);
+    sessionStorage.removeItem('pine_stays_userId');
+  };
+  
+  const updateUserInContext = (updates: Partial<User>) => {
+    if(user){
+      setUser(prevUser => prevUser ? { ...prevUser, ...updates } : null);
+    }
   };
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, loading, login, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, signup, logout, updateUserInContext }}>
       {children}
     </AuthContext.Provider>
   );

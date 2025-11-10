@@ -6,6 +6,18 @@ export type Location = 'Lonavala' | 'Mumbai' | 'Pune' | 'Goa' | 'Alibaug';
 
 export type CalendarStatus = 'available' | 'booked' | 'blocked' | 'owner';
 
+export type UserRole = 'admin' | 'agent' | 'owner';
+export type UserStatus = 'active' | 'pending' | 'inactive';
+
+export interface User {
+  id: string;
+  email: string;
+  password: string; // In a real app, this should be a hash
+  name: string;
+  role: UserRole;
+  status: UserStatus;
+}
+
 export interface Property {
   id: string;
   propertyCode: string;
@@ -29,6 +41,7 @@ export interface Property {
   menuCardLink?: string;
   inRoomDining?: string;
   status: 'active' | 'inactive';
+  ownerId?: string;
 }
 
 export interface CalendarEntry {
