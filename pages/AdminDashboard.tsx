@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { GoogleGenAI } from '@google/genai';
-import { Property, CalendarEntry, CalendarStatus, Amenity, User } from '../types';
+import { Property, CalendarEntry, CalendarStatus, Amenity, User, UserRole } from '../types';
 import { db } from '../services/databaseService';
 import { useAuth } from '../hooks/useAuth';
 import { AMENITIES, LOCATIONS, PROPERTY_TYPES, STATUS_COLORS, STATUSES } from '../constants';
@@ -273,14 +273,24 @@ interface UserManagementProps {
     refreshUsers: () => void;
 }
 const UserManagement: React.FC<UserManagementProps> = ({ users, refreshUsers }) => {
+    const [isUserModalOpen, setIsUserModalOpen] = useState(false);
+
     const handleApprove = async (userId: string) => {
         await db.updateUser(userId, { status: 'active' });
+        refreshUsers();
+    };
+    
+    const handleSaveUser = () => {
+        setIsUserModalOpen(false);
         refreshUsers();
     };
 
     return (
         <div className="bg-card p-4 sm:p-6 rounded-xl shadow-lg border border-border">
-            <h2 className="text-xl font-bold text-foreground mb-4">Manage Users</h2>
+             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">
+                <h2 className="text-xl font-bold text-foreground">Manage Users</h2>
+                <button onClick={() => setIsUserModalOpen(true)} className={`${baseButtonClass} bg-primary text-primary-foreground hover:bg-primary/90`}>Add User</button>
+            </div>
             <div className="overflow-x-auto">
                 <table className="w-full text-sm text-left text-muted-foreground">
                      <thead className="text-xs text-foreground uppercase bg-muted/50">
@@ -316,11 +326,81 @@ const UserManagement: React.FC<UserManagementProps> = ({ users, refreshUsers }) 
                     </tbody>
                 </table>
             </div>
+            {isUserModalOpen && <UserFormModal onClose={() => setIsUserModalOpen(false)} onSave={handleSaveUser} />}
         </div>
     )
 };
 
 // --- MODALS ---
+interface UserFormModalProps {
+    onClose: () => void;
+    onSave: () => void;
+}
+const UserFormModal: React.FC<UserFormModalProps> = ({ onClose, onSave }) => {
+    const [name, setName] = useState('');
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
+    const [role, setRole] = useState<UserRole>('agent');
+    const [error, setError] = useState('');
+    const [loading, setLoading] = useState(false);
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setError('');
+        setLoading(true);
+        try {
+            await db.addUser({ name, email, password, role, status: 'active' });
+            onSave();
+        } catch (err: any) {
+            setError(err.message || 'Failed to create user.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    return (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 animate-fade-in">
+            <div className="bg-card border border-border rounded-xl shadow-2xl p-6 w-full max-w-md">
+                <form onSubmit={handleSubmit}>
+                    <div className="flex items-center justify-between mb-4">
+                        <h2 className="text-xl font-bold text-foreground">Add New User</h2>
+                        <button type="button" onClick={onClose} className="p-2 rounded-full hover:bg-muted"><XMarkIcon className="w-6 h-6"/></button>
+                    </div>
+                    <div className="space-y-4">
+                        <div>
+                            <label className="block text-sm font-medium text-foreground mb-1">Full Name</label>
+                            <input type="text" value={name} onChange={(e) => setName(e.target.value)} className={baseInputClass} required />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-foreground mb-1">Email</label>
+                            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className={baseInputClass} required />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-foreground mb-1">Password</label>
+                            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} className={baseInputClass} required />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-foreground mb-1">Role</label>
+                            <select value={role} onChange={(e) => setRole(e.target.value as UserRole)} className={baseInputClass}>
+                                <option value="agent">Agent</option>
+                                <option value="owner">Owner</option>
+                            </select>
+                        </div>
+                         {error && <p className="text-sm text-destructive">{error}</p>}
+                    </div>
+                    <div className="mt-6 flex justify-end space-x-3">
+                        <button type="button" onClick={onClose} className={`${baseButtonClass} bg-secondary text-secondary-foreground hover:bg-secondary/80`}>Cancel</button>
+                        <button type="submit" disabled={loading} className={`${baseButtonClass} bg-primary text-primary-foreground hover:bg-primary/90`}>
+                            {loading ? 'Creating...' : 'Create User'}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    );
+};
+
+
 interface IcalImportModalProps {
     property: Property;
     onClose: () => void;

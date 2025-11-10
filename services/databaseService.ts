@@ -6,10 +6,9 @@ const formatDate = (date: Date) => date.toISOString().split('T')[0];
 
 // --- SAMPLE DATA ---
 const sampleUsers: User[] = [
-    { id: 'user1', email: 'admin@pinestays.com', password: 'password123', name: 'Admin User', role: 'admin', status: 'active' },
-    { id: 'user2', email: 'agent@pinestays.com', password: 'password123', name: 'Agent Smith', role: 'agent', status: 'active' },
-    { id: 'user3', email: 'pending@pinestays.com', password: 'password123', name: 'Pending Agent', role: 'agent', status: 'pending' },
-    { id: 'user4', email: 'owner@pinestays.com', password: 'password123', name: 'Property Owner', role: 'owner', status: 'active' },
+    { id: 'user1', email: 'admin@pinestays.in', password: 'pswd02@New', name: 'Admin User', role: 'admin', status: 'active' },
+    { id: 'user2', email: '735prashant@gmail.com', password: 'qwerty', name: 'Prashant Agent', role: 'agent', status: 'active' },
+    { id: 'user3', email: 'prashant@pinestays.in', password: 'qwerty', name: 'Prashant Owner', role: 'owner', status: 'active' },
 ];
 
 const sampleProperties: Property[] = [
@@ -36,7 +35,7 @@ const sampleProperties: Property[] = [
     menuCardLink: '#',
     inRoomDining: 'Available from 7 AM to 11 PM on request.',
     status: 'active',
-    ownerId: 'user4',
+    ownerId: 'user3',
   },
   {
     id: 'prop2',
@@ -78,7 +77,7 @@ const sampleProperties: Property[] = [
     videoLink: '',
     amenities: ['WiFi', 'AC', 'Kitchen', 'Parking'],
     status: 'active',
-    ownerId: 'user4',
+    ownerId: 'user3',
   },
   {
     id: 'prop4',
