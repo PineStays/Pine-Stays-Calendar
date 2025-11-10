@@ -1,0 +1,5 @@
+{
+  "name": "Pine Stays Calendar",
+  "description": "A complete, production-ready property calendar web application with separate interfaces for an Admin Dashboard and an Agent Calendar Portal. It manages short-term rental villa availability, pricing, and property information.",
+  "requestFramePermissions": []
+}
