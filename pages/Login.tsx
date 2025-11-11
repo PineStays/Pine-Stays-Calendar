@@ -31,6 +31,33 @@ const LoginPage: React.FC = () => {
     }
   };
 
+  const handleQuickLogin = async (role: 'admin' | 'agent' | 'owner') => {
+    setError('');
+    setLoading(true);
+    
+    const credentials = {
+        admin: { email: 'admin@pinestays.com', password: 'password123' },
+        agent: { email: 'agent@pinestays.com', password: 'password123' },
+        owner: { email: 'owner@pinestays.com', password: 'password123' }
+    };
+
+    const { email, password } = credentials[role];
+
+    try {
+      const user = await auth.login(email, password);
+      if (user) {
+        navigate('/');
+      } else {
+        setError(`Quick login for ${role} failed. Please check seed data.`);
+      }
+    } catch (err) {
+      setError('An error occurred during quick login. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4 font-sans">
       <div className="absolute top-4 right-4">
@@ -87,7 +114,41 @@ const LoginPage: React.FC = () => {
               </button>
             </div>
           </form>
-           <div className="text-center text-sm">
+           <div className="relative my-6">
+                <div className="absolute inset-0 flex items-center" aria-hidden="true">
+                    <div className="w-full border-t border-border"></div>
+                </div>
+                <div className="relative flex justify-center text-sm">
+                    <span className="px-2 bg-card text-muted-foreground">Quick Access for Testing</span>
+                </div>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <button
+                    type="button"
+                    onClick={() => handleQuickLogin('admin')}
+                    disabled={loading}
+                    className="w-full flex justify-center py-2.5 px-4 border border-input rounded-lg shadow-sm text-sm font-medium text-secondary-foreground bg-secondary hover:bg-accent disabled:opacity-60"
+                >
+                    Admin
+                </button>
+                <button
+                    type="button"
+                    onClick={() => handleQuickLogin('agent')}
+                    disabled={loading}
+                    className="w-full flex justify-center py-2.5 px-4 border border-input rounded-lg shadow-sm text-sm font-medium text-secondary-foreground bg-secondary hover:bg-accent disabled:opacity-60"
+                >
+                    Agent
+                </button>
+                <button
+                    type="button"
+                    onClick={() => handleQuickLogin('owner')}
+                    disabled={loading}
+                    className="w-full flex justify-center py-2.5 px-4 border border-input rounded-lg shadow-sm text-sm font-medium text-secondary-foreground bg-secondary hover:bg-accent disabled:opacity-60"
+                >
+                    Owner
+                </button>
+            </div>
+           <div className="text-center text-sm mt-6">
                 <p className="text-muted-foreground">
                     Agent?{' '}
                     <Link to="/signup" className="font-medium text-primary hover:text-primary/90">

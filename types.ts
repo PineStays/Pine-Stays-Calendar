@@ -1,4 +1,4 @@
-export type Amenity = 'Pool' | 'WiFi' | 'AC' | 'Kitchen' | 'Parking' | 'Garden' | 'Hot Tub' | 'Gym' | 'TV';
+export type Amenity = string;
 
 export type PropertyType = '3-BHK' | '4-BHK' | '5-BHK' | 'Villa' | 'Cottage' | 'Penthouse';
 
@@ -31,6 +31,7 @@ export interface Property {
   area: string; // e.g., "4000 sq ft"
   poolType: 'private' | 'shared' | 'none';
   basePrice: number;
+  securityDeposit?: number;
   photoLink: string;
   pdfLink: string;
   videoLink?: string;
@@ -39,7 +40,6 @@ export interface Property {
   extraGuestCost?: number;
   houseRules?: string;
   menuCardLink?: string;
-  inRoomDining?: string;
   status: 'active' | 'inactive';
   ownerId?: string;
 }

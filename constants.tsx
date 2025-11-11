@@ -1,7 +1,7 @@
 import { Amenity, CalendarStatus, Location, PropertyType } from './types';
 import React from 'react';
 
-export const AMENITIES: Amenity[] = ['Pool', 'WiFi', 'AC', 'Kitchen', 'Parking', 'Garden', 'Hot Tub', 'Gym', 'TV'];
+export const INITIAL_AMENITIES: Amenity[] = ['Pool', 'WiFi', 'AC', 'Kitchen', 'Parking', 'Garden', 'Hot Tub', 'Gym', 'TV'];
 export const PROPERTY_TYPES: PropertyType[] = ['3-BHK', '4-BHK', '5-BHK', 'Villa', 'Cottage', 'Penthouse'];
 export const LOCATIONS: Location[] = ['Lonavala', 'Mumbai', 'Pune', 'Goa', 'Alibaug'];
 export const STATUSES: CalendarStatus[] = ['available', 'booked', 'blocked', 'owner'];

@@ -1,5 +1,5 @@
-import { Property, CalendarEntry, CalendarStatus, User } from '../types';
-import { AMENITIES, LOCATIONS, PROPERTY_TYPES } from '../constants';
+import { Property, CalendarEntry, CalendarStatus, User, Amenity } from '../types';
+import { INITIAL_AMENITIES } from '../constants';
 
 const formatDate = (date: Date) => date.toISOString().split('T')[0];
 
@@ -7,6 +7,7 @@ class DatabaseService {
   private users: User[] = [];
   private properties: Property[] = [];
   private calendarEntries: CalendarEntry[] = [];
+  private allAmenities: Amenity[] = [];
   private dbKey = 'pine_stays_db';
 
   constructor() {
@@ -21,6 +22,7 @@ class DatabaseService {
         this.users = parsedData.users || [];
         this.properties = parsedData.properties || [];
         this.calendarEntries = parsedData.calendarEntries || [];
+        this.allAmenities = parsedData.allAmenities || [...INITIAL_AMENITIES];
         if (this.users.length === 0) {
             this.seedData();
         }
@@ -40,7 +42,8 @@ class DatabaseService {
       localStorage.setItem(this.dbKey, JSON.stringify({
         users: this.users,
         properties: this.properties,
-        calendarEntries: this.calendarEntries
+        calendarEntries: this.calendarEntries,
+        allAmenities: this.allAmenities
       }));
     } catch (error) {
       console.error("Failed to save database to localStorage", error);
@@ -69,6 +72,9 @@ class DatabaseService {
         },
     ];
     
+    // --- Seed Amenities ---
+    this.allAmenities = [...INITIAL_AMENITIES];
+
     // --- Seed Calendar Entries ---
     const today = new Date();
     this.calendarEntries = [
@@ -95,10 +101,12 @@ class DatabaseService {
     return Promise.resolve(newUser);
   }
 
-  async updateUser(userId: string, updates: Partial<User>): Promise<User> {
+  async updateUser(userId: string, updates: Partial<Omit<User, 'id'>>): Promise<User> {
     const userIndex = this.users.findIndex(u => u.id === userId);
     if (userIndex === -1) throw new Error("User not found");
-    this.users[userIndex] = { ...this.users[userIndex], ...updates };
+    // Prevent email change
+    const { email, ...safeUpdates } = updates;
+    this.users[userIndex] = { ...this.users[userIndex], ...safeUpdates };
     this.saveDb();
     return Promise.resolve(this.users[userIndex]);
   }
@@ -130,6 +138,19 @@ class DatabaseService {
     return Promise.resolve({ success: true });
   }
 
+  // --- Amenity Methods ---
+  async getAmenities(): Promise<Amenity[]> {
+      return Promise.resolve(this.allAmenities);
+  }
+  
+  async addAmenity(amenity: Amenity): Promise<Amenity> {
+    if (!this.allAmenities.find(a => a.toLowerCase() === amenity.toLowerCase())) {
+        this.allAmenities.push(amenity);
+        this.saveDb();
+    }
+    return Promise.resolve(amenity);
+  }
+
   // --- Calendar Methods ---
   async getCalendarEntries(startDate: string, endDate: string): Promise<CalendarEntry[]> {
     const entries = this.calendarEntries.filter(c => c.date >= startDate && c.date <= endDate);
@@ -138,8 +159,11 @@ class DatabaseService {
   
   async upsertCalendarEntry(entryData: Omit<CalendarEntry, 'id'>): Promise<CalendarEntry> {
     const existingIndex = this.calendarEntries.findIndex(c => c.propertyId === entryData.propertyId && c.date === entryData.date);
+    const property = this.properties.find(p => p.id === entryData.propertyId);
+    if (!property) throw new Error("Property not found for calendar entry.");
 
-    if (entryData.status === 'available') {
+    // If the new state is default (available at base price, with no notes), remove any override entry.
+    if (entryData.status === 'available' && entryData.price === property.basePrice && (!entryData.notes || entryData.notes.trim() === '')) {
         if (existingIndex !== -1) {
             this.calendarEntries.splice(existingIndex, 1);
         }
@@ -147,6 +171,7 @@ class DatabaseService {
         return Promise.resolve({ ...entryData, id: '' });
     }
 
+    // Otherwise, create or update the entry.
     if (existingIndex !== -1) {
       const id = this.calendarEntries[existingIndex].id;
       this.calendarEntries[existingIndex] = { ...entryData, id };
@@ -162,11 +187,25 @@ class DatabaseService {
 
   async bulkUpdateCells(
     cells: { propertyId: string; date: string }[],
-    action: { type: 'setStatus'; status: CalendarStatus } | { type: 'setPrice'; price: number } | { type: 'adjustPrice'; percentage: number }
+    action: { type: 'setStatus'; status: CalendarStatus } | { type: 'setPrice'; price: number } | { type: 'adjustPrice'; percentage: number } | { type: 'setWeekendPrice'; price: number } | { type: 'setWeekdayPrice'; price: number }
   ): Promise<{ updatedCount: number }> {
     let updatedCount = 0;
     for (const cell of cells) {
       const { propertyId, date: dateStr } = cell;
+
+      if (action.type === 'setWeekendPrice' || action.type === 'setWeekdayPrice') {
+          const date = new Date(dateStr + 'T00:00:00'); // Use T00:00:00 to avoid timezone issues with getDay()
+          const day = date.getDay(); // 0 = Sunday, 6 = Saturday
+          const isWeekend = (day === 0 || day === 6);
+
+          if (action.type === 'setWeekendPrice' && !isWeekend) {
+              continue; // Skip weekdays for this action
+          }
+          if (action.type === 'setWeekdayPrice' && isWeekend) {
+              continue; // Skip weekends for this action
+          }
+      }
+      
       const property = this.properties.find(p => p.id === propertyId);
       if (!property) continue;
 
@@ -174,7 +213,7 @@ class DatabaseService {
       let currentPrice = existingEntry ? existingEntry.price : property.basePrice;
       let currentStatus = existingEntry ? existingEntry.status : 'available';
 
-      if (currentStatus === 'booked' && (action.type === 'setPrice' || action.type === 'adjustPrice')) {
+      if (currentStatus === 'booked' && (action.type === 'setPrice' || action.type === 'adjustPrice' || action.type === 'setWeekendPrice' || action.type === 'setWeekdayPrice')) {
           continue; // Skip price changes for booked dates
       }
 
@@ -185,11 +224,15 @@ class DatabaseService {
         case 'setStatus':
             newStatus = action.status;
             if (['blocked', 'owner'].includes(newStatus)) newPrice = 0;
-            else if (currentPrice === 0 && newStatus === 'available') newPrice = property.basePrice;
+            else if (newStatus === 'available') newPrice = property.basePrice;
+            else if (currentPrice === 0) newPrice = property.basePrice;
             break;
         case 'setPrice':
+        case 'setWeekendPrice':
+        case 'setWeekdayPrice':
             newPrice = action.price;
             if (currentStatus !== 'booked') newStatus = newPrice > 0 ? 'available' : 'blocked';
+            if (newPrice <= 0) newPrice = 0;
             break;
         case 'adjustPrice':
             const priceToAdjust = (currentStatus === 'available' && currentPrice > 0) ? currentPrice : property.basePrice;
@@ -199,8 +242,11 @@ class DatabaseService {
             break;
       }
       
-      if (newStatus !== currentStatus || newPrice !== currentPrice) {
-          await this.upsertCalendarEntry({
+      const isDefaultState = newStatus === 'available' && newPrice === property.basePrice && (!existingEntry?.notes || existingEntry.notes.trim() === '');
+      const hadEntry = !!existingEntry;
+      
+      if ((hadEntry && isDefaultState) || (!isDefaultState && (newStatus !== currentStatus || newPrice !== currentPrice))) {
+         await this.upsertCalendarEntry({
               propertyId,
               date: dateStr,
               status: newStatus,

@@ -1,9 +1,9 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { GoogleGenAI } from '@google/genai';
-import { Property, CalendarEntry, CalendarStatus, Amenity, User, UserRole } from '../types';
+import { Property, CalendarEntry, CalendarStatus, Amenity, User, UserRole, UserStatus } from '../types';
 import { db } from '../services/databaseService';
 import { useAuth } from '../hooks/useAuth';
-import { AMENITIES, LOCATIONS, PROPERTY_TYPES, STATUS_COLORS, STATUSES } from '../constants';
+import { INITIAL_AMENITIES, LOCATIONS, PROPERTY_TYPES, STATUS_COLORS, STATUSES } from '../constants';
 import { Header } from '../Header';
 import { SparklesIcon, CalendarIcon, BuildingLibraryIcon, UsersIcon, XMarkIcon } from '../Icons';
 
@@ -23,9 +23,10 @@ interface SelectionEditorProps {
     selectedCellCount: number;
     onApply: (action: any) => Promise<void>;
     onClear: () => void;
+    activeNote: { propertyName: string; date: string; content: string } | null;
 }
-const SelectionEditor: React.FC<SelectionEditorProps> = ({ selectedCellCount, onApply, onClear }) => {
-    const [action, setAction] = useState<'setStatus' | 'setPrice' | 'adjustPrice'>('setStatus');
+const SelectionEditor: React.FC<SelectionEditorProps> = ({ selectedCellCount, onApply, onClear, activeNote }) => {
+    const [action, setAction] = useState<'setStatus' | 'setPrice' | 'adjustPrice' | 'setWeekendPrice' | 'setWeekdayPrice'>('setStatus');
     const [status, setStatus] = useState<CalendarStatus>('available');
     const [price, setPrice] = useState(0);
     const [percentage, setPercentage] = useState(0);
@@ -34,7 +35,9 @@ const SelectionEditor: React.FC<SelectionEditorProps> = ({ selectedCellCount, on
     const handleApply = async () => {
         let updateAction: any;
         if (action === 'setStatus') updateAction = { type: 'setStatus', status };
-        if (action === 'setPrice') updateAction = { type: 'setPrice', price };
+        if (action === 'setPrice') updateAction = { type: 'setPrice', price: Number(price) };
+        if (action === 'setWeekendPrice') updateAction = { type: 'setWeekendPrice', price: Number(price) };
+        if (action === 'setWeekdayPrice') updateAction = { type: 'setWeekdayPrice', price: Number(price) };
         if (action === 'adjustPrice') updateAction = { type: 'adjustPrice', percentage };
         
         setLoading(true);
@@ -46,15 +49,24 @@ const SelectionEditor: React.FC<SelectionEditorProps> = ({ selectedCellCount, on
 
     return (
         <div className="fixed bottom-0 left-0 right-0 z-40 p-2 sm:bottom-4 sm:left-1/2 sm:-translate-x-1/2 sm:w-full sm:max-w-4xl sm:p-0">
-            <div className="bg-card/80 backdrop-blur-lg rounded-xl shadow-2xl border border-border p-4 space-y-3">
+            <div className="bg-card/80 backdrop-blur-lg rounded-xl shadow-2xl border border-border p-4 space-y-3 animate-fade-in">
+                {activeNote && (
+                    <div className="border-b border-border pb-3 mb-3">
+                        <h3 className="font-bold text-foreground">Note for {activeNote.propertyName}</h3>
+                        <p className="text-sm font-semibold text-muted-foreground">{new Date(activeNote.date + 'T00:00:00').toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+                        <p className="text-sm bg-muted/50 p-3 rounded-lg mt-1">{activeNote.content}</p>
+                    </div>
+                )}
                 <div className="flex justify-between items-center">
-                    <h3 className="font-bold text-foreground">{selectedCellCount} Dates Selected</h3>
+                    <h3 className="font-bold text-foreground">{selectedCellCount} Date{selectedCellCount > 1 ? 's' : ''} Selected</h3>
                     <button onClick={onClear} className="text-sm font-semibold text-primary hover:text-primary/90">Clear</button>
                 </div>
                 <div className="flex flex-col sm:flex-row items-center gap-2">
                     <select value={action} onChange={e => setAction(e.target.value as any)} className={`${baseInputClass} flex-grow`}>
                         <option value="setStatus">Set Status</option>
-                        <option value="setPrice">Set Absolute Price</option>
+                        <option value="setPrice">Set Price (All)</option>
+                        <option value="setWeekendPrice">Set Weekend Price (Sat/Sun)</option>
+                        <option value="setWeekdayPrice">Set Weekday Price (Mon-Fri)</option>
                         <option value="adjustPrice">Adjust Price by %</option>
                     </select>
                     {action === 'setStatus' && (
@@ -62,7 +74,7 @@ const SelectionEditor: React.FC<SelectionEditorProps> = ({ selectedCellCount, on
                             {STATUSES.map(s => <option key={s} value={s} className="capitalize">{s === 'owner' ? 'Booked O' : s}</option>)}
                         </select>
                     )}
-                    {action === 'setPrice' && (
+                    {['setPrice', 'setWeekendPrice', 'setWeekdayPrice'].includes(action) && (
                         <input type="number" value={price} onChange={e => setPrice(Number(e.target.value))} placeholder="e.g. 25000" className={`${baseInputClass} flex-grow`} />
                     )}
                     {action === 'adjustPrice' && (
@@ -77,21 +89,54 @@ const SelectionEditor: React.FC<SelectionEditorProps> = ({ selectedCellCount, on
     );
 };
 
+// --- CALENDAR CELL (MEMOIZED) ---
+const MemoizedCalendarCell = React.memo<{
+    prop: Property;
+    date: Date;
+    calendarData: Map<string, CalendarEntry>;
+    isSelected: boolean;
+    onCellSelect: (propertyId: string, date: string) => void;
+}>(({ prop, date, calendarData, isSelected, onCellSelect }) => {
+    const dateStr = formatDate(date);
+    const entry = calendarData.get(`${prop.id}-${dateStr}`);
+    const status = entry?.status || 'available';
+    const price = entry?.price ?? prop.basePrice;
+    const statusText = status === 'owner' ? 'Booked O' : status;
+
+    return (
+        <td
+            className={`border border-border text-center cursor-pointer transition-all relative ${STATUS_COLORS[status].bg} ${STATUS_COLORS[status].text} ${isSelected ? 'ring-2 ring-primary ring-offset-background ring-offset-2 z-10 bg-primary/20' : 'hover:shadow-md'}`}
+            onClick={() => onCellSelect(prop.id, dateStr)}
+        >
+            <div className="p-1 font-medium">
+                {price > 0 ? `₹${price.toLocaleString('en-IN', { maximumFractionDigits: 0 })}` : <span className="capitalize text-xs">{statusText}</span>}
+            </div>
+            {entry?.notes && <span className="absolute top-1 right-1 w-2 h-2 bg-blue-500 rounded-full"></span>}
+        </td>
+    );
+});
+
+
 // --- CALENDAR MANAGEMENT ---
 interface CalendarManagementProps {
     properties: Property[];
+    refreshAllData: () => void;
 }
-const CalendarManagement: React.FC<CalendarManagementProps> = ({ properties }) => {
+const CalendarManagement: React.FC<CalendarManagementProps> = ({ properties, refreshAllData }) => {
     const [startDate, setStartDate] = useState(new Date());
     const [calendarEntries, setCalendarEntries] = useState<CalendarEntry[]>([]);
     const [loading, setLoading] = useState(true);
     const [selectedCells, setSelectedCells] = useState<{ propertyId: string; date: string }[]>([]);
+    const [activeNote, setActiveNote] = useState<{ propertyName: string; date: string; content: string } | null>(null);
     
     const dates = useMemo(() => getDatesInRange(startDate, 30), [startDate]);
 
     const fetchCalendarData = useCallback(async () => {
         setLoading(true);
-        if (dates.length === 0) return;
+        if (dates.length === 0) {
+            setLoading(false);
+            return;
+        }
         const start = formatDate(dates[0]);
         const end = formatDate(dates[dates.length - 1]);
         const entries = await db.getCalendarEntries(start, end);
@@ -111,22 +156,42 @@ const CalendarManagement: React.FC<CalendarManagementProps> = ({ properties }) =
         return map;
     }, [calendarEntries]);
 
-    const handleCellSelect = (propertyId: string, date: string) => {
-        setSelectedCells(prev => {
-            const key = `${propertyId}-${date}`;
-            const index = prev.findIndex(c => `${c.propertyId}-${c.date}` === key);
-            if (index > -1) {
-                return [...prev.slice(0, index), ...prev.slice(index + 1)];
-            } else {
-                return [...prev, { propertyId, date }];
-            }
-        });
-    };
+    const handleCellSelect = useCallback((propertyId: string, date: string) => {
+        const key = `${propertyId}-${date}`;
+        const index = selectedCells.findIndex(c => `${c.propertyId}-${c.date}` === key);
+        let newSelectedCells;
 
+        if (index > -1) {
+            newSelectedCells = [...selectedCells.slice(0, index), ...selectedCells.slice(index + 1)];
+        } else {
+            newSelectedCells = [...selectedCells, { propertyId, date }];
+        }
+        
+        setSelectedCells(newSelectedCells);
+
+        if (newSelectedCells.length === 1) {
+            const singleSelection = newSelectedCells[0];
+            const entry = calendarData.get(`${singleSelection.propertyId}-${singleSelection.date}`);
+            const prop = activeProperties.find(p => p.id === singleSelection.propertyId);
+            if (entry?.notes && prop) {
+                setActiveNote({
+                    propertyName: prop.name,
+                    date: singleSelection.date,
+                    content: entry.notes
+                });
+            } else {
+                setActiveNote(null);
+            }
+        } else {
+            setActiveNote(null);
+        }
+    }, [selectedCells, calendarData, activeProperties]);
+    
     const handleBulkUpdate = async (action: any) => {
         if (selectedCells.length === 0) return;
         await db.bulkUpdateCells(selectedCells, action);
         setSelectedCells([]);
+        setActiveNote(null);
         fetchCalendarData();
     };
 
@@ -162,17 +227,16 @@ const CalendarManagement: React.FC<CalendarManagementProps> = ({ properties }) =
                                     <td className="sticky left-0 bg-card hover:bg-muted/50 z-10 p-2 border border-border font-semibold text-foreground w-40 min-w-[160px]">{prop.name}</td>
                                     {dates.map(date => {
                                         const dateStr = formatDate(date);
-                                        const entry = calendarData.get(`${prop.id}-${dateStr}`);
-                                        const status = entry?.status || 'available';
-                                        const price = entry?.price ?? prop.basePrice;
                                         const isSelected = selectedCells.some(c => c.propertyId === prop.id && c.date === dateStr);
-                                        const statusText = status === 'owner' ? 'Booked O' : status;
                                         return (
-                                            <td key={dateStr} className={`border border-border text-center cursor-pointer transition-shadow ${STATUS_COLORS[status].bg} ${STATUS_COLORS[status].text} ${isSelected ? 'ring-2 ring-blue-500 ring-offset-1 z-10' : 'hover:shadow-md'}`} onClick={() => handleCellSelect(prop.id, dateStr)}>
-                                                <div className="p-1 font-medium">
-                                                    {price > 0 ? `₹${price.toLocaleString('en-IN', {maximumFractionDigits: 0})}` : <span className="capitalize text-xs">{statusText}</span>}
-                                                </div>
-                                            </td>
+                                            <MemoizedCalendarCell
+                                                key={`${prop.id}-${dateStr}`}
+                                                prop={prop}
+                                                date={date}
+                                                calendarData={calendarData}
+                                                isSelected={isSelected}
+                                                onCellSelect={handleCellSelect}
+                                            />
                                         );
                                     })}
                                 </tr>
@@ -182,7 +246,15 @@ const CalendarManagement: React.FC<CalendarManagementProps> = ({ properties }) =
                      {loading && <div className="absolute inset-0 bg-card/70 flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div></div>}
                 </div>
             </div>
-            <SelectionEditor selectedCellCount={selectedCells.length} onApply={handleBulkUpdate} onClear={() => setSelectedCells([])} />
+            <SelectionEditor
+                selectedCellCount={selectedCells.length}
+                onApply={handleBulkUpdate}
+                onClear={() => {
+                    setSelectedCells([]);
+                    setActiveNote(null);
+                }}
+                activeNote={activeNote}
+            />
         </div>
     );
 };
@@ -191,9 +263,11 @@ const CalendarManagement: React.FC<CalendarManagementProps> = ({ properties }) =
 interface PropertyManagementProps {
     properties: Property[];
     users: User[];
-    refreshProperties: () => void;
+    allAmenities: Amenity[];
+    refreshAllData: () => void;
+    refreshSubData: () => void;
 }
-const PropertyManagement: React.FC<PropertyManagementProps> = ({ properties, users, refreshProperties }) => {
+const PropertyManagement: React.FC<PropertyManagementProps> = ({ properties, users, allAmenities, refreshAllData, refreshSubData }) => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingProperty, setEditingProperty] = useState<Property | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
@@ -206,14 +280,26 @@ const PropertyManagement: React.FC<PropertyManagementProps> = ({ properties, use
 
     const handleSave = () => {
         setIsModalOpen(false);
-        refreshProperties();
+        refreshAllData();
     };
     
     const handleIcalImport = async (propertyId: string) => {
         await db.mockIcalImport(propertyId);
         setIsIcalModalOpen(false);
         alert('iCal calendar synced successfully! The calendar view has been updated.');
-        refreshProperties();
+        refreshAllData();
+    };
+
+    const handleDeleteProperty = async (propertyId: string) => {
+        if (window.confirm("Are you sure you want to delete this property? This cannot be undone.")) {
+            try {
+                await db.deleteProperty(propertyId);
+                refreshAllData();
+            } catch (error) {
+                console.error("Failed to delete property:", error);
+                alert("An error occurred while deleting the property.");
+            }
+        }
     };
 
     return (
@@ -252,7 +338,7 @@ const PropertyManagement: React.FC<PropertyManagementProps> = ({ properties, use
                                     <td className="px-6 py-4 flex space-x-4 justify-end">
                                         <button onClick={() => { setIcalProperty(prop); setIsIcalModalOpen(true); }} className="font-medium text-primary hover:underline">iCal Sync</button>
                                         <button onClick={() => { setEditingProperty(prop); setIsModalOpen(true); }} className="font-medium text-primary hover:underline">Edit</button>
-                                        <button onClick={async () => { if (window.confirm("Delete this property?")) { await db.deleteProperty(prop.id); refreshProperties(); }}} className="font-medium text-destructive hover:underline">Delete</button>
+                                        <button onClick={() => handleDeleteProperty(prop.id)} className="font-medium text-destructive hover:underline">Delete</button>
                                     </td>
                                 </tr>
                             )
@@ -260,7 +346,7 @@ const PropertyManagement: React.FC<PropertyManagementProps> = ({ properties, use
                     </tbody>
                 </table>
             </div>
-             {isModalOpen && <PropertyFormModal property={editingProperty} owners={users.filter(u => u.role === 'owner')} onClose={() => setIsModalOpen(false)} onSave={handleSave} />}
+             {isModalOpen && <PropertyFormModal property={editingProperty} owners={users.filter(u => u.role === 'owner')} allAmenities={allAmenities} onClose={() => setIsModalOpen(false)} onSave={handleSave} refreshParentData={refreshSubData} />}
              {isIcalModalOpen && icalProperty && <IcalImportModal property={icalProperty} onClose={() => setIsIcalModalOpen(false)} onImport={handleIcalImport} />}
         </div>
     );
@@ -272,15 +358,12 @@ interface UserManagementProps {
     refreshUsers: () => void;
 }
 const UserManagement: React.FC<UserManagementProps> = ({ users, refreshUsers }) => {
-    const [isUserModalOpen, setIsUserModalOpen] = useState(false);
+    const [isUserAddModalOpen, setIsUserAddModalOpen] = useState(false);
+    const [editingUser, setEditingUser] = useState<User | null>(null);
 
-    const handleApprove = async (userId: string) => {
-        await db.updateUser(userId, { status: 'active' });
-        refreshUsers();
-    };
-    
     const handleSaveUser = () => {
-        setIsUserModalOpen(false);
+        setIsUserAddModalOpen(false);
+        setEditingUser(null);
         refreshUsers();
     };
 
@@ -288,7 +371,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ users, refreshUsers }) 
         <div className="bg-card p-4 sm:p-6 rounded-xl shadow-lg border border-border">
              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">
                 <h2 className="text-xl font-bold text-foreground">Manage Users</h2>
-                <button onClick={() => setIsUserModalOpen(true)} className={`${baseButtonClass} bg-primary text-primary-foreground hover:bg-primary/90`}>Add User</button>
+                <button onClick={() => setIsUserAddModalOpen(true)} className={`${baseButtonClass} bg-primary text-primary-foreground hover:bg-primary/90`}>Add User</button>
             </div>
             <div className="overflow-x-auto">
                 <table className="w-full text-sm text-left text-muted-foreground">
@@ -315,17 +398,16 @@ const UserManagement: React.FC<UserManagementProps> = ({ users, refreshUsers }) 
                                         {user.status}
                                     </span>
                                 </td>
-                                <td className="px-6 py-4 text-right">
-                                    {user.status === 'pending' && user.role === 'agent' && (
-                                        <button onClick={() => handleApprove(user.id)} className="font-medium text-primary hover:underline">Approve</button>
-                                    )}
+                                <td className="px-6 py-4 text-right space-x-4">
+                                    <button onClick={() => setEditingUser(user)} className="font-medium text-primary hover:underline">Edit</button>
                                 </td>
                             </tr>
                         ))}
                     </tbody>
                 </table>
             </div>
-            {isUserModalOpen && <UserFormModal onClose={() => setIsUserModalOpen(false)} onSave={handleSaveUser} />}
+            {isUserAddModalOpen && <UserFormModal onClose={() => setIsUserAddModalOpen(false)} onSave={handleSaveUser} />}
+            {editingUser && <UserEditFormModal user={editingUser} onClose={() => setEditingUser(null)} onSave={handleSaveUser} />}
         </div>
     )
 };
@@ -334,12 +416,13 @@ const UserManagement: React.FC<UserManagementProps> = ({ users, refreshUsers }) 
 interface UserFormModalProps {
     onClose: () => void;
     onSave: () => void;
+    initialRole?: UserRole;
 }
-const UserFormModal: React.FC<UserFormModalProps> = ({ onClose, onSave }) => {
+const UserFormModal: React.FC<UserFormModalProps> = ({ onClose, onSave, initialRole = 'agent' }) => {
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
-    const [role, setRole] = useState<UserRole>('agent');
+    const [role, setRole] = useState<UserRole>(initialRole);
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
 
@@ -361,7 +444,7 @@ const UserFormModal: React.FC<UserFormModalProps> = ({ onClose, onSave }) => {
                 email,
                 password,
                 role,
-                status: 'active',
+                status: role === 'agent' ? 'pending' : 'active',
             });
             onSave();
         } catch (err: any) {
@@ -397,6 +480,7 @@ const UserFormModal: React.FC<UserFormModalProps> = ({ onClose, onSave }) => {
                             <select value={role} onChange={(e) => setRole(e.target.value as UserRole)} className={baseInputClass}>
                                 <option value="agent">Agent</option>
                                 <option value="owner">Owner</option>
+                                <option value="admin">Admin</option>
                             </select>
                         </div>
                          {error && <p className="text-sm text-destructive">{error}</p>}
@@ -413,6 +497,98 @@ const UserFormModal: React.FC<UserFormModalProps> = ({ onClose, onSave }) => {
     );
 };
 
+interface UserEditFormModalProps {
+    user: User;
+    onClose: () => void;
+    onSave: () => void;
+}
+const UserEditFormModal: React.FC<UserEditFormModalProps> = ({ user, onClose, onSave }) => {
+    const [formData, setFormData] = useState({
+        name: user.name,
+        password: '',
+        role: user.role,
+        status: user.status
+    });
+    const [error, setError] = useState('');
+    const [loading, setLoading] = useState(false);
+
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+        const { name, value } = e.target;
+        setFormData(prev => ({...prev, [name]: value}));
+    };
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setError('');
+        setLoading(true);
+        try {
+            const updates: Partial<User> = {
+                name: formData.name,
+                role: formData.role,
+                status: formData.status
+            };
+            if (formData.password) {
+                updates.password = formData.password;
+            }
+            await db.updateUser(user.id, updates);
+            onSave();
+        } catch (err: any) {
+            setError(err.message || 'Failed to update user.');
+        } finally {
+            setLoading(false);
+        }
+    };
+    
+    return (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 animate-fade-in">
+            <div className="bg-card border border-border rounded-xl shadow-2xl p-6 w-full max-w-md">
+                <form onSubmit={handleSubmit}>
+                    <div className="flex items-center justify-between mb-4">
+                        <h2 className="text-xl font-bold text-foreground">Edit User</h2>
+                        <button type="button" onClick={onClose} className="p-2 rounded-full hover:bg-muted"><XMarkIcon className="w-6 h-6"/></button>
+                    </div>
+                    <div className="space-y-4">
+                         <div>
+                            <label className="block text-sm font-medium text-muted-foreground mb-1">Email (cannot be changed)</label>
+                            <input type="email" value={user.email} className={`${baseInputClass} text-muted-foreground`} disabled />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-foreground mb-1">Full Name</label>
+                            <input name="name" type="text" value={formData.name} onChange={handleChange} className={baseInputClass} required />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-foreground mb-1">New Password</label>
+                            <input name="password" type="password" value={formData.password} onChange={handleChange} className={baseInputClass} placeholder="Leave blank to keep current" />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-foreground mb-1">Role</label>
+                            <select name="role" value={formData.role} onChange={handleChange} className={baseInputClass}>
+                                <option value="agent">Agent</option>
+                                <option value="owner">Owner</option>
+                                <option value="admin">Admin</option>
+                            </select>
+                        </div>
+                         <div>
+                            <label className="block text-sm font-medium text-foreground mb-1">Status</label>
+                            <select name="status" value={formData.status} onChange={handleChange} className={baseInputClass}>
+                                <option value="active">Active</option>
+                                <option value="pending">Pending</option>
+                                <option value="inactive">Inactive</option>
+                            </select>
+                        </div>
+                         {error && <p className="text-sm text-destructive">{error}</p>}
+                    </div>
+                    <div className="mt-6 flex justify-end space-x-3">
+                        <button type="button" onClick={onClose} className={`${baseButtonClass} bg-secondary text-secondary-foreground hover:bg-secondary/80`}>Cancel</button>
+                        <button type="submit" disabled={loading} className={`${baseButtonClass} bg-primary text-primary-foreground hover:bg-primary/90`}>
+                            {loading ? 'Saving...' : 'Save Changes'}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    );
+}
 
 interface IcalImportModalProps {
     property: Property;
@@ -468,19 +644,24 @@ const generatePropertyCode = (data: Pick<Property, 'location' | 'bedrooms'>) => 
 interface PropertyFormModalProps {
     property: Property | null;
     owners: User[];
+    allAmenities: Amenity[];
     onClose: () => void;
     onSave: () => void;
+    refreshParentData: () => void;
 }
-const PropertyFormModal: React.FC<PropertyFormModalProps> = ({ property, owners, onClose, onSave }) => {
+const PropertyFormModal: React.FC<PropertyFormModalProps> = ({ property, owners, allAmenities, onClose, onSave, refreshParentData }) => {
     const [formData, setFormData] = useState<Omit<Property, 'id'>>({
         name: '', type: 'Villa', location: 'Lonavala', capacity: 8, basePrice: 20000,
         photoLink: '', pdfLink: '', amenities: [], description: '', status: 'active',
         propertyCode: '', bedrooms: 3, bathrooms: 3, area: '', maxCapacity: 10,
-        poolType: 'none', videoLink: '', extraGuestCost: 0, houseRules: '', menuCardLink: '', inRoomDining: '', ownerId: '',
+        poolType: 'none', videoLink: '', extraGuestCost: 0, houseRules: '', menuCardLink: '', ownerId: '',
+        securityDeposit: 0,
         ...(property || {}),
     });
     const [loading, setLoading] = useState(false);
     const [isGenerating, setIsGenerating] = useState(false);
+    const [isAddingOwner, setIsAddingOwner] = useState(false);
+    const [customAmenity, setCustomAmenity] = useState('');
 
     useEffect(() => {
         if (property) {
@@ -494,13 +675,23 @@ const PropertyFormModal: React.FC<PropertyFormModalProps> = ({ property, owners,
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;
-        setFormData(prev => ({...prev, [name]: ['capacity', 'basePrice', 'bedrooms', 'bathrooms', 'maxCapacity', 'extraGuestCost'].includes(name) ? Number(value) : value }));
+        setFormData(prev => ({...prev, [name]: ['capacity', 'basePrice', 'bedrooms', 'bathrooms', 'maxCapacity', 'extraGuestCost', 'securityDeposit'].includes(name) ? Number(value) : value }));
     };
 
     const handleAmenityChange = (amenity: Amenity) => {
         setFormData(prev => ({ ...prev, amenities: prev.amenities.includes(amenity) ? prev.amenities.filter(a => a !== amenity) : [...prev.amenities, amenity] }));
     };
     
+    const handleAddCustomAmenity = async () => {
+        const newAmenity = customAmenity.trim();
+        if (newAmenity && !allAmenities.find(a => a.toLowerCase() === newAmenity.toLowerCase())) {
+            await db.addAmenity(newAmenity);
+            refreshParentData(); // This will re-fetch amenities and update the prop
+            handleAmenityChange(newAmenity); // Check the new amenity
+            setCustomAmenity('');
+        }
+    };
+
     const handleGenerateDescription = async () => {
         setIsGenerating(true);
         try {
@@ -533,6 +724,11 @@ const PropertyFormModal: React.FC<PropertyFormModalProps> = ({ property, owners,
         onSave();
     };
 
+    const handleOwnerSave = () => {
+        setIsAddingOwner(false);
+        refreshParentData();
+    };
+
     return (
          <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-0 sm:p-4 animate-fade-in">
             <div className="bg-card rounded-none sm:rounded-xl shadow-2xl w-full h-full sm:w-full sm:max-w-4xl sm:max-h-[90vh] overflow-y-auto border border-border">
@@ -551,12 +747,15 @@ const PropertyFormModal: React.FC<PropertyFormModalProps> = ({ property, owners,
                             <label className="block text-sm font-medium text-foreground">Property Code</label>
                             <input name="propertyCode" value={formData.propertyCode} onChange={handleChange} className={`mt-1 ${baseInputClass}`} required/>
                         </div>
-                         <div>
+                         <div className="md:col-span-2">
                             <label className="block text-sm font-medium text-foreground">Owner</label>
-                            <select name="ownerId" value={formData.ownerId} onChange={handleChange} className={`mt-1 ${baseInputClass}`}>
-                                <option value="">Unassigned</option>
-                                {owners.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
-                            </select>
+                            <div className="flex items-center space-x-2">
+                                <select name="ownerId" value={formData.ownerId} onChange={handleChange} className={`mt-1 ${baseInputClass} flex-grow`}>
+                                    <option value="">Unassigned</option>
+                                    {owners.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
+                                </select>
+                                <button type="button" onClick={() => setIsAddingOwner(true)} className={`${baseButtonClass} bg-secondary text-secondary-foreground hover:bg-secondary/80 mt-1`}>Add New</button>
+                            </div>
                         </div>
                          <div>
                             <label className="block text-sm font-medium text-foreground">Location</label>
@@ -611,17 +810,25 @@ const PropertyFormModal: React.FC<PropertyFormModalProps> = ({ property, owners,
                             <label className="block text-sm font-medium text-foreground">Extra Guest Cost (INR)</label>
                             <input name="extraGuestCost" type="number" value={formData.extraGuestCost} onChange={handleChange} className={`mt-1 ${baseInputClass}`} />
                         </div>
+                        <div>
+                            <label className="block text-sm font-medium text-foreground">Refundable Security Deposit (INR)</label>
+                            <input name="securityDeposit" type="number" value={formData.securityDeposit} onChange={handleChange} className={`mt-1 ${baseInputClass}`} />
+                        </div>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4 border-b border-border pb-6">
                         <div className="md:col-span-2">
                             <label className="block text-sm font-medium text-foreground">Amenities</label>
                             <div className="grid grid-cols-2 sm:grid-cols-3 gap-y-2 gap-x-4 mt-2 border border-input rounded-lg p-4 bg-background">
-                                {AMENITIES.map(amenity => (
+                                {allAmenities.map(amenity => (
                                     <label key={amenity} className="flex items-center space-x-2 text-sm text-foreground font-medium">
                                         <input type="checkbox" checked={formData.amenities.includes(amenity)} onChange={() => handleAmenityChange(amenity)} className="rounded text-primary focus:ring-ring" />
                                         <span>{amenity}</span>
                                     </label>
                                 ))}
+                            </div>
+                            <div className="flex items-center space-x-2 mt-2">
+                                <input type="text" value={customAmenity} onChange={e => setCustomAmenity(e.target.value)} placeholder="Add new amenity..." className={`${baseInputClass} flex-grow`} />
+                                <button type="button" onClick={handleAddCustomAmenity} className={`${baseButtonClass} bg-secondary text-secondary-foreground hover:bg-secondary/80`}>Add</button>
                             </div>
                         </div>
                         <div>
@@ -642,15 +849,11 @@ const PropertyFormModal: React.FC<PropertyFormModalProps> = ({ property, owners,
                                         <span>{isGenerating ? 'Generating...' : 'Generate with AI'}</span>
                                     </button>
                                 </div>
-                                <textarea name="description" value={formData.description} onChange={handleChange} rows={3} className={`mt-1 ${baseInputClass}`} />
+                                <textarea name="description" value={formData.description} onChange={handleChange} rows={5} className={`mt-1 ${baseInputClass}`} />
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-foreground">House Rules</label>
-                                <textarea name="houseRules" value={formData.houseRules} onChange={handleChange} rows={2} className={`mt-1 ${baseInputClass}`} />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-foreground">In-Room Dining</label>
-                                <textarea name="inRoomDining" value={formData.inRoomDining} onChange={handleChange} rows={2} className={`mt-1 ${baseInputClass}`} />
+                                <textarea name="houseRules" value={formData.houseRules} onChange={handleChange} rows={4} className={`mt-1 ${baseInputClass}`} />
                             </div>
                          </div>
                     </div>
@@ -660,6 +863,7 @@ const PropertyFormModal: React.FC<PropertyFormModalProps> = ({ property, owners,
                         <button type="submit" disabled={loading} className={`${baseButtonClass} bg-primary text-primary-foreground hover:bg-primary/90 disabled:bg-primary/50`}>{loading ? 'Saving...' : 'Save Property'}</button>
                     </div>
                 </form>
+                {isAddingOwner && <UserFormModal onClose={() => setIsAddingOwner(false)} onSave={handleOwnerSave} initialRole="owner" />}
             </div>
         </div>
     );
@@ -670,16 +874,31 @@ type AdminView = 'calendar' | 'properties' | 'users';
 const AdminDashboard: React.FC = () => {
     const [properties, setProperties] = useState<Property[]>([]);
     const [users, setUsers] = useState<User[]>([]);
+    const [allAmenities, setAllAmenities] = useState<Amenity[]>([]);
     const [loading, setLoading] = useState(true);
     const [view, setView] = useState<AdminView>('calendar');
     const { user } = useAuth();
     
     const fetchAllData = useCallback(async () => {
         setLoading(true);
-        const [props, usersData] = await Promise.all([db.getProperties(), db.getUsers()]);
+        const [props, usersData, amenitiesData] = await Promise.all([
+            db.getProperties(), 
+            db.getUsers(),
+            db.getAmenities()
+        ]);
         setProperties(props);
         setUsers(usersData);
+        setAllAmenities(amenitiesData);
         setLoading(false);
+    }, []);
+    
+    const refreshSubData = useCallback(async () => {
+        const [usersData, amenitiesData] = await Promise.all([
+            db.getUsers(),
+            db.getAmenities()
+        ]);
+        setUsers(usersData);
+        setAllAmenities(amenitiesData);
     }, []);
 
     useEffect(() => {
@@ -708,8 +927,8 @@ const AdminDashboard: React.FC = () => {
                      <div className="text-center py-12"><div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary mx-auto"></div></div>
                 ) : (
                     <>
-                        <div className={`${view !== 'calendar' ? 'hidden' : ''}`}><CalendarManagement properties={properties} /></div>
-                        <div className={`${view !== 'properties' ? 'hidden' : ''}`}><PropertyManagement properties={properties} users={users} refreshProperties={fetchAllData} /></div>
+                        <div className={`${view !== 'calendar' ? 'hidden' : ''}`}><CalendarManagement properties={properties} refreshAllData={fetchAllData} /></div>
+                        <div className={`${view !== 'properties' ? 'hidden' : ''}`}><PropertyManagement properties={properties} users={users} allAmenities={allAmenities} refreshAllData={fetchAllData} refreshSubData={refreshSubData} /></div>
                         <div className={`${view !== 'users' ? 'hidden' : ''}`}><UserManagement users={users} refreshUsers={fetchAllData} /></div>
                     </>
                 )}

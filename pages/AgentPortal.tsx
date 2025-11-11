@@ -156,11 +156,76 @@ interface FilterBarProps {
 const FilterBar: React.FC<FilterBarProps> = (props) => {
     const { searchTerm, setSearchTerm, locationFilter, setLocationFilter, typeFilter, setTypeFilter, view, setView, propertyCount, onClear, onDateNav, currentDate, onDateChange } = props;
     const [isFilterOpen, setIsFilterOpen] = useState(false);
+    const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
+    const datePickerRef = useRef<HTMLDivElement>(null);
+    const datePickerToggleRef = useRef<HTMLButtonElement>(null);
     const baseInputClass = "w-full border-input bg-background rounded-lg shadow-sm focus:ring-ring focus:border-ring text-sm py-2.5";
     
-    const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const date = new Date(e.target.value + 'T00:00:00');
-        onDateChange(date);
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (
+                isDatePickerOpen &&
+                datePickerRef.current && !datePickerRef.current.contains(event.target as Node) &&
+                datePickerToggleRef.current && !datePickerToggleRef.current.contains(event.target as Node)
+            ) {
+                setIsDatePickerOpen(false);
+            }
+        };
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, [isDatePickerOpen]);
+
+    const DatePicker = () => {
+        const [viewDate, setViewDate] = useState(currentDate);
+
+        const handleDateSelect = (day: number) => {
+            const newDate = new Date(viewDate.getFullYear(), viewDate.getMonth(), day);
+            onDateChange(newDate);
+            setIsDatePickerOpen(false);
+        }
+
+        const changeMonth = (offset: number) => {
+            setViewDate(d => {
+                const newD = new Date(d);
+                newD.setMonth(d.getMonth() + offset);
+                return newD;
+            })
+        }
+
+        const year = viewDate.getFullYear();
+        const month = viewDate.getMonth();
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+        const firstDayOfMonth = new Date(year, month, 1).getDay(); // 0=Sun, 1=Mon...
+        const days = Array.from({length: daysInMonth}, (_, i) => i + 1);
+        const blanks = Array.from({length: firstDayOfMonth}, (_, i) => i);
+        const weekDays = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
+
+        return (
+            <div ref={datePickerRef} className="absolute top-full mt-2 left-1/2 -translate-x-1/2 bg-card border border-border rounded-lg shadow-xl p-3 z-20 animate-fade-in w-72">
+                <div className="flex justify-between items-center mb-2">
+                    <button onClick={() => changeMonth(-1)} className="p-1.5 rounded-full hover:bg-muted text-muted-foreground">&lt;</button>
+                    <span className="font-semibold text-foreground">{viewDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric'})}</span>
+                    <button onClick={() => changeMonth(1)} className="p-1.5 rounded-full hover:bg-muted text-muted-foreground">&gt;</button>
+                </div>
+                <div className="grid grid-cols-7 gap-1 text-center text-xs text-muted-foreground">
+                    {weekDays.map(d => <div key={d} className="w-8 h-8 flex items-center justify-center">{d}</div>)}
+                </div>
+                <div className="grid grid-cols-7 gap-1 mt-1">
+                    {blanks.map((b, index) => <div key={`b-${index}`}></div>)}
+                    {days.map(day => (
+                        <button 
+                            key={day} 
+                            onClick={() => handleDateSelect(day)}
+                            className={`p-1.5 rounded-full text-sm aspect-square w-8 h-8 flex items-center justify-center transition-colors ${
+                                currentDate.getFullYear() === year && currentDate.getMonth() === month && currentDate.getDate() === day
+                                ? 'bg-primary text-primary-foreground font-semibold'
+                                : 'hover:bg-accent'
+                            }`}
+                        >{day}</button>
+                    ))}
+                </div>
+            </div>
+        );
     };
 
     const FilterControls = () => (
@@ -218,9 +283,15 @@ const FilterBar: React.FC<FilterBarProps> = (props) => {
             <div className="flex justify-between items-center border-t border-border mt-3 pt-3">
                  <div className="flex items-center space-x-1 sm:space-x-2">
                     <button onClick={() => onDateNav(-1)} className="p-2.5 rounded-md hover:bg-muted text-muted-foreground">&lt;</button>
-                    <div className="flex items-center space-x-2">
-                        <span className="font-semibold text-foreground text-base sm:text-lg">{currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric'})}</span>
-                        <input type="date" value={formatDate(currentDate)} onChange={handleDateChange} className={`${baseInputClass.replace('w-full','')} p-1 text-xs`} aria-label="Jump to date" />
+                    <div className="relative">
+                        <button
+                            ref={datePickerToggleRef}
+                            onClick={() => setIsDatePickerOpen(prev => !prev)}
+                            className="font-semibold text-foreground text-base sm:text-lg px-4 py-2 rounded-lg hover:bg-muted transition-colors text-center w-48"
+                        >
+                            {currentDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric'})}
+                        </button>
+                        {isDatePickerOpen && <DatePicker />}
                     </div>
                     <button onClick={() => onDateNav(1)} className="p-2.5 rounded-md hover:bg-muted text-muted-foreground">&gt;</button>
                  </div>
@@ -366,12 +437,6 @@ Tariff (Base Price): ₹${property.basePrice.toLocaleString('en-IN')}/night${ext
                                 <p className="text-muted-foreground text-sm mb-6 whitespace-pre-wrap">{property.houseRules}</p>
                             </>
                         )}
-                        {property.inRoomDining && (
-                            <>
-                                <h4 className="font-semibold mb-2 text-foreground">In-Room Dining</h4>
-                                <p className="text-muted-foreground text-sm mb-6 whitespace-pre-wrap">{property.inRoomDining}</p>
-                            </>
-                        )}
 
                         <div className="bg-muted/50 p-4 rounded-xl mb-4 border border-border">
                              <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
@@ -383,6 +448,12 @@ Tariff (Base Price): ₹${property.basePrice.toLocaleString('en-IN')}/night${ext
                                     <>
                                         <div className="text-muted-foreground">Extra Guest Cost</div>
                                         <div className="font-semibold text-foreground">₹{property.extraGuestCost.toLocaleString('en-IN')}/person</div>
+                                    </>
+                                ) : null}
+                                {property.securityDeposit && property.securityDeposit > 0 ? (
+                                    <>
+                                        <div className="text-muted-foreground">Security Deposit</div>
+                                        <div className="font-semibold text-foreground">₹{property.securityDeposit.toLocaleString('en-IN')}</div>
                                     </>
                                 ) : null}
                              </div>
