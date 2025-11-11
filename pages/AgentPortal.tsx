@@ -5,7 +5,7 @@ import { db } from '../services/databaseService';
 import { STATUS_COLORS, LOCATIONS, PROPERTY_TYPES } from '../constants';
 import { useAuth } from '../hooks/useAuth';
 import { Header } from '../Header';
-import { ClipboardIcon, CheckIcon, XMarkIcon } from '../Icons';
+import { ClipboardIcon, CheckIcon, XMarkIcon, CalendarIcon } from '../Icons';
 
 const formatDate = (date: Date) => date.toISOString().split('T')[0];
 
@@ -282,18 +282,19 @@ const FilterBar: React.FC<FilterBarProps> = (props) => {
 
             <div className="flex justify-between items-center border-t border-border mt-3 pt-3">
                  <div className="flex items-center space-x-1 sm:space-x-2">
-                    <button onClick={() => onDateNav(-1)} className="p-2.5 rounded-md hover:bg-muted text-muted-foreground">&lt;</button>
+                    <button onClick={() => onDateNav(-1)} className="p-2.5 rounded-full hover:bg-muted text-muted-foreground transition-colors">&lt;</button>
                     <div className="relative">
                         <button
                             ref={datePickerToggleRef}
                             onClick={() => setIsDatePickerOpen(prev => !prev)}
-                            className="font-semibold text-foreground text-base sm:text-lg px-4 py-2 rounded-lg hover:bg-muted transition-colors text-center w-48"
+                            className="font-bold text-foreground text-base sm:text-lg px-4 py-2.5 rounded-lg hover:bg-muted transition-colors text-center w-56 flex items-center justify-center gap-x-2"
                         >
-                            {currentDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric'})}
+                            <CalendarIcon className="w-5 h-5 text-muted-foreground" />
+                            <span>{currentDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric'})}</span>
                         </button>
                         {isDatePickerOpen && <DatePicker />}
                     </div>
-                    <button onClick={() => onDateNav(1)} className="p-2.5 rounded-md hover:bg-muted text-muted-foreground">&gt;</button>
+                    <button onClick={() => onDateNav(1)} className="p-2.5 rounded-full hover:bg-muted text-muted-foreground transition-colors">&gt;</button>
                  </div>
                  <div className="p-1 bg-secondary rounded-lg hidden md:block">
                     <button onClick={() => setView('month')} className={`px-3 py-1 text-sm font-semibold rounded-md ${view === 'month' ? 'bg-card shadow text-primary' : 'text-muted-foreground'}`}>Month</button>
@@ -334,7 +335,7 @@ const PropertyCalendarGrid: React.FC<PropertyCalendarGridProps> = ({ properties,
                     <tbody className="text-xs">
                         {properties.map(prop => (
                             <tr key={prop.id}>
-                                <td className="sticky left-0 bg-card hover:bg-muted/50 z-10 p-2 border-r border-b border-border font-semibold w-40 min-w-[160px] cursor-pointer text-primary hover:underline" onClick={() => onCellClick(prop, formatDate(dates[0]))}>{prop.name}</td>
+                                <td className="sticky left-0 bg-card hover:bg-muted/50 z-10 p-2 border-r border-b border-border font-bold w-40 min-w-[160px] cursor-pointer text-teal-600 dark:text-teal-400 hover:opacity-80 transition-opacity" onClick={() => onCellClick(prop, formatDate(dates[0]))}>{prop.name}</td>
                                 {dates.map(date => {
                                     const dateStr = formatDate(date);
                                     const entry = calendarData.get(`${prop.id}-${dateStr}`);
@@ -390,19 +391,52 @@ const PropertyDetailsModal: React.FC<PropertyDetailsModalProps> = ({ property, d
 
     const handleCopy = () => {
         const poolText = property.poolType === 'none' ? 'No' : `${property.poolType.charAt(0).toUpperCase() + property.poolType.slice(1)} Pool`;
-        const extraGuestText = property.extraGuestCost ? `\nExtra Guest Cost: ₹${property.extraGuestCost.toLocaleString('en-IN')}/person` : '';
         
-        const textToCopy = `
+        const extraGuestText = property.extraGuestCost && property.extraGuestCost > 0 
+            ? `₹${property.extraGuestCost.toLocaleString('en-IN')}/person` 
+            : 'NA';
+            
+        const securityDepositText = property.securityDeposit && property.securityDeposit > 0 
+            ? `₹${property.securityDeposit.toLocaleString('en-IN')}` 
+            : 'NA';
+    
+        const amenitiesText = property.amenities.length > 0 ? property.amenities.join(', ') : 'NA';
+        const rulesText = property.houseRules ? `\n${property.houseRules}` : '\nNA';
+        
+        const photoLinkText = property.photoLink || 'NA';
+        const pdfLinkText = property.pdfLink || 'NA';
+        const videoLinkText = property.videoLink || 'NA';
+        const menuCardLinkText = property.menuCardLink || 'NA';
+    
+        const textToCopy = `*Property Details: ${property.name}*
+---------------------------------
 Property Code: ${property.propertyCode}
-Name: ${property.name}
+Location: ${property.location}
+Type: ${property.type}
 Bedrooms: ${property.bedrooms}
 Bathrooms: ${property.bathrooms}
 Swimming Pool: ${poolText}
 Area: ${property.area}
 Base Occupancy: ${property.capacity}
 Max Occupancy: ${property.maxCapacity}
-Tariff (Base Price): ₹${property.basePrice.toLocaleString('en-IN')}/night${extraGuestText}
-        `.trim().replace(/^\s+/gm, '');
+---------------------------------
+*Pricing*
+Tariff (Base Price): ₹${property.basePrice.toLocaleString('en-IN')}/night
+Extra Guest Cost: ${extraGuestText}
+Refundable Security Deposit: ${securityDepositText}
+---------------------------------
+*Amenities*
+${amenitiesText}
+---------------------------------
+*Links*
+Photos: ${photoLinkText}
+PDF Brochure: ${pdfLinkText}
+Video: ${videoLinkText}
+Menu Card: ${menuCardLinkText}
+---------------------------------
+*House Rules*${rulesText}`
+.trim().replace(/^\s+/gm, '');
+    
         navigator.clipboard.writeText(textToCopy);
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
@@ -415,14 +449,28 @@ Tariff (Base Price): ₹${property.basePrice.toLocaleString('en-IN')}/night${ext
     return (
         <div className="fixed inset-0 bg-black/60 z-40 flex items-center justify-center p-0 sm:p-4 backdrop-blur-sm animate-fade-in">
             <div ref={modalRef} className="bg-card border border-border rounded-none sm:rounded-2xl shadow-2xl w-full h-full sm:w-full sm:max-w-4xl sm:max-h-[90vh] flex flex-col md:flex-row overflow-hidden">
-                <div className="w-full md:w-1/2 relative">
-                    <img src={property.photoLink} alt={property.name} className="object-cover w-full h-64 md:h-full" />
+                <div className="w-full md:w-1/2 relative bg-muted/50 flex items-center justify-center p-4 md:p-0">
+                    {property.photoLink ? (
+                        <img src={property.photoLink} alt={property.name} className="object-contain max-w-full max-h-full rounded-lg shadow-lg" />
+                    ) : (
+                        <div className="flex flex-col items-center justify-center text-muted-foreground">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                            <span className="mt-2 text-sm">No image available</span>
+                        </div>
+                    )}
+                    <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex space-x-2">
+                        <span className="w-2.5 h-2.5 bg-white rounded-full opacity-90 ring-1 ring-black/20"></span>
+                        <span className="w-2.5 h-2.5 bg-white rounded-full opacity-40 ring-1 ring-black/20"></span>
+                        <span className="w-2.5 h-2.5 bg-white rounded-full opacity-40 ring-1 ring-black/20"></span>
+                    </div>
                     <button onClick={onClose} className="absolute top-4 right-4 text-white bg-black/40 rounded-full p-2 hover:bg-black/60 transition"><XMarkIcon className="w-5 h-5"/></button>
                 </div>
                 <div className="w-full md:w-1/2 p-6 md:p-8 flex flex-col overflow-y-auto">
                     <div className="flex-grow">
                         <h2 className="text-3xl font-bold mb-1 text-foreground">{property.name}</h2>
-                        <p className="text-sm text-muted-foreground mb-6">{property.type} &middot; {property.bedrooms} BR / {property.bathrooms} BA &middot; Sleeps {property.capacity}-{property.maxCapacity}</p>
+                        <p className="text-sm text-muted-foreground mb-6">{property.type} &middot; {property.location}</p>
                         
                         {property.description && <p className="text-foreground/80 text-sm mb-6">{property.description}</p>}
 
@@ -441,6 +489,7 @@ Tariff (Base Price): ₹${property.basePrice.toLocaleString('en-IN')}/night${ext
                         <div className="bg-muted/50 p-4 rounded-xl mb-4 border border-border">
                              <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
                                 <div className="text-muted-foreground">Property Code</div><div className="font-semibold text-foreground">{property.propertyCode}</div>
+                                <div className="text-muted-foreground">Bedrooms / Bathrooms</div><div className="font-semibold text-foreground">{property.bedrooms} BR / {property.bathrooms} BA</div>
                                 <div className="text-muted-foreground">Area</div><div className="font-semibold text-foreground">{property.area}</div>
                                 <div className="text-muted-foreground">Pool</div><div className="font-semibold text-foreground capitalize">{property.poolType === 'none' ? 'No' : property.poolType}</div>
                                 <div className="text-muted-foreground">Base / Max Guests</div><div className="font-semibold text-foreground">{property.capacity} / {property.maxCapacity}</div>
