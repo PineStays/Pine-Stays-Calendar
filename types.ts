@@ -12,7 +12,7 @@ export type UserStatus = 'active' | 'pending' | 'inactive';
 export interface User {
   id: string;
   email: string;
-  password: string; // In a real app, this should be a hash
+  password: string;
   name: string;
   role: UserRole;
   status: UserStatus;

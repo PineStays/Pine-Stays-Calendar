@@ -1,11 +1,11 @@
-import React, { createContext, useState, useContext, ReactNode, useEffect, useCallback } from 'react';
-import { User, UserRole, UserStatus } from '../types';
+import React, { createContext, useState, useContext, ReactNode, useEffect } from 'react';
+import { User } from '../types';
 import { db } from '../services/databaseService';
 
 interface AuthContextType {
   user: User | null;
   loading: boolean;
-  login: (email: string, password: string) => Promise<User | null>;
+  login: (email: string, password:string) => Promise<User | null>;
   signup: (name: string, email: string, password: string) => Promise<User | null>;
   logout: () => void;
   updateUserInContext: (updates: Partial<User>) => void;
@@ -17,66 +17,57 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const checkSession = useCallback(async () => {
-    setLoading(true);
-    try {
-        const storedUserId = sessionStorage.getItem('pine_stays_userId');
-        if (storedUserId) {
-            const sessionUser = await db.getUserById(storedUserId);
-            if (sessionUser) {
-                setUser(sessionUser);
-            }
-        }
-    } catch (e) {
-        console.error("Session check failed", e);
-        setUser(null);
-        sessionStorage.removeItem('pine_stays_userId');
-    } finally {
-        setLoading(false);
-    }
-  }, []);
-  
   useEffect(() => {
-    checkSession();
-  }, [checkSession]);
-
-  const login = async (email: string, password: string): Promise<User | null> => {
-    setLoading(true);
-    const loggedInUser = await db.getUserByEmailAndPassword(email, password);
-    if (loggedInUser) {
-      setUser(loggedInUser);
-      sessionStorage.setItem('pine_stays_userId', loggedInUser.id);
-      setLoading(false);
-      return loggedInUser;
+    // Check session storage for a logged in user
+    try {
+      const storedUser = sessionStorage.getItem('pine_stays_user');
+      if (storedUser) {
+        setUser(JSON.parse(storedUser));
+      }
+    } catch (error) {
+        console.error("Failed to parse user from sessionStorage", error);
+        sessionStorage.removeItem('pine_stays_user');
     }
     setLoading(false);
+  }, []);
+
+  const login = async (email: string, password: string): Promise<User | null> => {
+    const users = await db.getUsers();
+    const foundUser = users.find(u => u.email === email && u.password === password);
+    if (foundUser) {
+      setUser(foundUser);
+      sessionStorage.setItem('pine_stays_user', JSON.stringify(foundUser));
+      return foundUser;
+    }
     return null;
   };
   
   const signup = async (name: string, email: string, password: string): Promise<User | null> => {
-    try {
-      const newUser = await db.addUser({
+     const users = await db.getUsers();
+     if (users.some(u => u.email === email)) {
+        console.error("Signup failed: email already exists");
+        return null;
+     }
+     const newUser = await db.addUser({
         name,
         email,
         password,
         role: 'agent',
         status: 'pending'
-      });
-      return newUser;
-    } catch (error) {
-      console.error("Signup failed:", error);
-      return null;
-    }
+     });
+     return newUser;
   };
 
   const logout = () => {
     setUser(null);
-    sessionStorage.removeItem('pine_stays_userId');
+    sessionStorage.removeItem('pine_stays_user');
   };
   
   const updateUserInContext = (updates: Partial<User>) => {
     if(user){
-      setUser(prevUser => prevUser ? { ...prevUser, ...updates } : null);
+      const updatedUser = { ...user, ...updates };
+      setUser(updatedUser);
+      sessionStorage.setItem('pine_stays_user', JSON.stringify(updatedUser));
     }
   };
 

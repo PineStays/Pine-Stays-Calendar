@@ -1,9 +1,9 @@
-import React, { createContext, useContext, useEffect, useState } from 'react'
+import React, { createContext, useContext, useEffect, useState, PropsWithChildren } from 'react'
 
 type Theme = 'dark' | 'light' | 'system'
 
+// FIX: Removed explicit children from props type to be used with PropsWithChildren
 type ThemeProviderProps = {
-  children: React.ReactNode
   defaultTheme?: Theme
   storageKey?: string
 }
@@ -20,12 +20,12 @@ const initialState: ThemeProviderState = {
 
 const ThemeProviderContext = createContext<ThemeProviderState>(initialState)
 
+// FIX: Removed unused ...props from signature and context provider to fix TypeScript error with children prop.
 export function ThemeProvider({
   children,
   defaultTheme = 'system',
   storageKey = 'vite-ui-theme',
-  ...props
-}: ThemeProviderProps) {
+}: PropsWithChildren<ThemeProviderProps>) {
   const [theme, setTheme] = useState<Theme>(
     () => (localStorage.getItem(storageKey) as Theme) || defaultTheme
   )
@@ -57,7 +57,7 @@ export function ThemeProvider({
   }
 
   return (
-    <ThemeProviderContext.Provider {...props} value={value}>
+    <ThemeProviderContext.Provider value={value}>
       {children}
     </ThemeProviderContext.Provider>
   )

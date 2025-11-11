@@ -1,398 +1,228 @@
-import { Property, CalendarEntry, CalendarStatus, User, UserRole, UserStatus } from '../types';
+import { Property, CalendarEntry, CalendarStatus, User } from '../types';
+import { AMENITIES, LOCATIONS, PROPERTY_TYPES } from '../constants';
 
-// --- HELPER FUNCTIONS ---
-const generateId = () => Math.random().toString(36).substr(2, 9);
 const formatDate = (date: Date) => date.toISOString().split('T')[0];
 
-// --- SAMPLE DATA ---
-const sampleUsers: User[] = [
-    { id: 'user1', email: 'admin@pinestays.in', password: 'pswd02@New', name: 'Admin User', role: 'admin', status: 'active' },
-    { id: 'user2', email: '735prashant@gmail.com', password: 'qwerty', name: 'Prashant Agent', role: 'agent', status: 'active' },
-    { id: 'user3', email: 'prashant@pinestays.in', password: 'qwerty', name: 'Prashant Owner', role: 'owner', status: 'active' },
-];
-
-const sampleProperties: Property[] = [
-  {
-    id: 'prop1',
-    propertyCode: 'LAV-B5-VIL1',
-    name: 'Lavender Hills',
-    type: 'Villa',
-    location: 'Lonavala',
-    capacity: 12,
-    maxCapacity: 15,
-    bedrooms: 5,
-    bathrooms: 5,
-    area: '4500 sq ft',
-    poolType: 'private',
-    basePrice: 32000,
-    photoLink: 'https://picsum.photos/seed/lavender/800/600',
-    pdfLink: '#',
-    videoLink: '',
-    amenities: ['Pool', 'WiFi', 'AC', 'Kitchen', 'Parking', 'Garden'],
-    description: 'A luxurious villa with stunning valley views, perfect for a family getaway.',
-    extraGuestCost: 2000,
-    houseRules: 'No loud music after 10 PM. Outside guests are not allowed.',
-    menuCardLink: '#',
-    inRoomDining: 'Available from 7 AM to 11 PM on request.',
-    status: 'active',
-    ownerId: 'user3',
-  },
-  {
-    id: 'prop2',
-    propertyCode: 'MUM-B5-5BH2',
-    name: 'Imperial Calista',
-    type: '5-BHK',
-    location: 'Mumbai',
-    capacity: 10,
-    maxCapacity: 12,
-    bedrooms: 5,
-    bathrooms: 6,
-    area: '3800 sq ft',
-    poolType: 'shared',
-    basePrice: 45000,
-    photoLink: 'https://picsum.photos/seed/imperial/800/600',
-    pdfLink: '#',
-    videoLink: '',
-    amenities: ['WiFi', 'AC', 'Kitchen', 'Gym', 'Hot Tub'],
-    description: 'An opulent 5-BHK apartment in the heart of the city with modern amenities.',
-    extraGuestCost: 2500,
-    houseRules: 'Standard society rules apply.',
-    status: 'active',
-  },
-  {
-    id: 'prop3',
-    propertyCode: 'PUN-B3-PEN3',
-    name: 'Pune Penthouse',
-    type: 'Penthouse',
-    location: 'Pune',
-    capacity: 6,
-    maxCapacity: 8,
-    bedrooms: 3,
-    bathrooms: 3,
-    area: '2500 sq ft',
-    poolType: 'none',
-    basePrice: 25000,
-    photoLink: 'https://picsum.photos/seed/pune/800/600',
-    pdfLink: '#',
-    videoLink: '',
-    amenities: ['WiFi', 'AC', 'Kitchen', 'Parking'],
-    status: 'active',
-    ownerId: 'user3',
-  },
-  {
-    id: 'prop4',
-    propertyCode: 'GOA-B2-COT4',
-    name: 'Goan Paradise Cottage',
-    type: 'Cottage',
-    location: 'Goa',
-    capacity: 4,
-    maxCapacity: 5,
-    bedrooms: 2,
-    bathrooms: 2,
-    area: '1800 sq ft',
-    poolType: 'private',
-    basePrice: 18000,
-    photoLink: 'https://picsum.photos/seed/goa/800/600',
-    pdfLink: '#',
-    videoLink: '',
-    amenities: ['Pool', 'WiFi', 'AC', 'Garden'],
-    status: 'inactive',
-  },
-  {
-    id: 'prop5',
-    propertyCode: 'ALI-B4-4BH5',
-    name: 'Alibaug Beachfront',
-    type: '4-BHK',
-    location: 'Alibaug',
-    capacity: 8,
-    maxCapacity: 10,
-    bedrooms: 4,
-    bathrooms: 4,
-    area: '3200 sq ft',
-    poolType: 'private',
-    basePrice: 28000,
-    photoLink: 'https://picsum.photos/seed/alibaug/800/600',
-    pdfLink: '#',
-    videoLink: '',
-    amenities: ['Pool', 'WiFi', 'AC', 'Kitchen', 'Parking', 'Garden'],
-    description: 'Wake up to the sound of waves in this beautiful beachfront property.',
-    status: 'active',
-  },
-];
-
-const generateSampleCalendar = (): CalendarEntry[] => {
-  const entries: CalendarEntry[] = [];
-  const today = new Date();
-  const propertyIds = sampleProperties.map(p => p.id);
-
-  for (let i = 0; i < 90; i++) {
-    const date = new Date(today);
-    date.setDate(today.getDate() + i);
-    const dateStr = formatDate(date);
-
-    for (const propId of propertyIds) {
-      const property = sampleProperties.find(p => p.id === propId);
-      if (!property) continue;
-
-      const rand = Math.random();
-      let status: CalendarStatus = 'available';
-      let price = property.basePrice;
-
-      if (rand < 0.15) {
-        status = 'booked';
-      } else if (rand < 0.20) {
-        status = 'blocked';
-        price = 0;
-      } else if (rand < 0.23) {
-        status = 'owner';
-        price = 0;
-      }
-      
-      const day = date.getDay(); // Sunday - 0, Saturday - 6
-      if(day === 5 || day === 6 || day === 0){ // Fri, Sat, Sun
-        price = Math.round(price * 1.25);
-      }
-
-      if (status !== 'available') {
-        entries.push({
-          id: generateId(),
-          propertyId: propId,
-          date: dateStr,
-          status,
-          price,
-          notes: status === 'booked' ? `Booking #${Math.floor(Math.random() * 1000)}` : '',
-        });
-      }
-    }
-  }
-  return entries;
-};
-
-
-// --- DATABASE SERVICE ---
 class DatabaseService {
-  private properties: Property[] = [];
-  private calendars: CalendarEntry[] = [];
   private users: User[] = [];
+  private properties: Property[] = [];
+  private calendarEntries: CalendarEntry[] = [];
+  private dbKey = 'pine_stays_db';
 
   constructor() {
-    this.loadData();
+    this.loadDb();
   }
 
-  private loadData() {
+  private loadDb() {
     try {
-      const storedProperties = localStorage.getItem('pine_stays_properties');
-      const storedCalendars = localStorage.getItem('pine_stays_calendars');
-      const storedUsers = localStorage.getItem('pine_stays_users');
-
-      if (storedProperties && storedCalendars && storedUsers) {
-        this.properties = JSON.parse(storedProperties);
-        this.calendars = JSON.parse(storedCalendars);
-        this.users = JSON.parse(storedUsers);
+      const data = localStorage.getItem(this.dbKey);
+      if (data) {
+        const parsedData = JSON.parse(data);
+        this.users = parsedData.users || [];
+        this.properties = parsedData.properties || [];
+        this.calendarEntries = parsedData.calendarEntries || [];
+        if (this.users.length === 0) {
+            this.seedData();
+        }
       } else {
-        this.properties = sampleProperties;
-        this.calendars = generateSampleCalendar();
-        this.users = sampleUsers;
-        this.saveData();
+        this.seedData();
       }
     } catch (error) {
-      console.error("Failed to load data from localStorage", error);
-      this.properties = sampleProperties;
-      this.calendars = generateSampleCalendar();
-      this.users = sampleUsers;
+        console.error("Failed to load database from localStorage", error);
+        this.seedData();
+    } finally {
+        this.saveDb();
     }
   }
 
-  private saveData() {
+  private saveDb() {
     try {
-      localStorage.setItem('pine_stays_properties', JSON.stringify(this.properties));
-      localStorage.setItem('pine_stays_calendars', JSON.stringify(this.calendars));
-      localStorage.setItem('pine_stays_users', JSON.stringify(this.users));
-    } catch (error)
-      {
-      console.error("Failed to save data to localStorage", error);
+      localStorage.setItem(this.dbKey, JSON.stringify({
+        users: this.users,
+        properties: this.properties,
+        calendarEntries: this.calendarEntries
+      }));
+    } catch (error) {
+      console.error("Failed to save database to localStorage", error);
     }
   }
 
-  private async simulateDelay<T,>(data: T): Promise<T> {
-    return new Promise(resolve => setTimeout(() => resolve(data), 200 + Math.random() * 300));
+  private seedData() {
+    // --- Seed Users ---
+    this.users = [
+      { id: 'user-admin-01', name: 'Admin User', email: 'admin@pinestays.com', password: 'password123', role: 'admin', status: 'active' },
+      { id: 'user-agent-01', name: 'Agent Smith', email: 'agent@pinestays.com', password: 'password123', role: 'agent', status: 'active' },
+      { id: 'user-agent-02', name: 'Pending Agent', email: 'pending@pinestays.com', password: 'password123', role: 'agent', status: 'pending' },
+      { id: 'user-owner-01', name: 'Owner John', email: 'owner@pinestays.com', password: 'password123', role: 'owner', status: 'active' },
+    ];
+
+    // --- Seed Properties ---
+    this.properties = [
+        {
+            id: 'prop-01', propertyCode: 'LNV-B4-ABCD', name: 'The Glass House', type: 'Villa', location: 'Lonavala', capacity: 8, maxCapacity: 12, bedrooms: 4, bathrooms: 4, area: '4500 sq ft', poolType: 'private', basePrice: 25000, photoLink: 'https://images.unsplash.com/photo-1613977257363-311617c0938f?q=80&w=2070&auto=format&fit=crop', pdfLink: '#', amenities: ['Pool', 'WiFi', 'AC', 'Kitchen', 'Parking', 'Garden'], description: 'A stunning modern villa with panoramic views, perfect for a luxurious getaway.', status: 'active', ownerId: 'user-owner-01', extraGuestCost: 2000, houseRules: 'No loud music after 10 PM. No pets allowed.'
+        },
+        {
+            id: 'prop-02', propertyCode: 'GOA-B5-EFGH', name: 'Casa Sol', type: '5-BHK', location: 'Goa', capacity: 10, maxCapacity: 15, bedrooms: 5, bathrooms: 5, area: '6000 sq ft', poolType: 'private', basePrice: 40000, photoLink: 'https://images.unsplash.com/photo-1580587771525-78b9dba3b914?q=80&w=1974&auto=format&fit=crop', pdfLink: '#', amenities: ['Pool', 'WiFi', 'AC', 'Kitchen', 'Parking', 'Garden', 'TV'], description: 'Experience beachfront bliss in this spacious and elegant Goan villa.', status: 'active', ownerId: 'user-owner-01'
+        },
+        {
+            id: 'prop-03', propertyCode: 'ALI-B3-IJKL', name: 'The Frangipani', type: '3-BHK', location: 'Alibaug', capacity: 6, maxCapacity: 8, bedrooms: 3, bathrooms: 3, area: '3000 sq ft', poolType: 'shared', basePrice: 18000, photoLink: 'https://images.unsplash.com/photo-1598228723793-52759bba239c?q=80&w=1974&auto=format&fit=crop', pdfLink: '#', amenities: ['Pool', 'WiFi', 'AC', 'Kitchen', 'Parking'], description: 'A charming and cozy retreat surrounded by lush greenery.', status: 'active'
+        },
+    ];
+    
+    // --- Seed Calendar Entries ---
+    const today = new Date();
+    this.calendarEntries = [
+        { id: `cal-01`, propertyId: 'prop-01', date: formatDate(new Date(today.setDate(today.getDate() + 2))), status: 'booked', price: 30000, notes: 'Confirmed booking' },
+        { id: `cal-02`, propertyId: 'prop-01', date: formatDate(new Date(today.setDate(today.getDate() + 1))), status: 'booked', price: 30000, notes: 'Confirmed booking' },
+        { id: `cal-03`, propertyId: 'prop-02', date: formatDate(new Date(today.setDate(today.getDate() + 5))), status: 'owner', price: 0, notes: 'Owner stay' },
+        { id: `cal-04`, propertyId: 'prop-03', date: formatDate(new Date(today.setDate(today.getDate() + 10))), status: 'blocked', price: 0, notes: 'Maintenance' },
+    ];
   }
-  
+
   // --- User Methods ---
   async getUsers(): Promise<User[]> {
-      return this.simulateDelay([...this.users]);
+    return Promise.resolve(this.users);
   }
-  
+
   async getUserById(userId: string): Promise<User | undefined> {
-      const user = this.users.find(u => u.id === userId);
-      return this.simulateDelay(user ? {...user} : undefined);
-  }
-
-  async getUserByEmailAndPassword(email: string, pass: string): Promise<User | null> {
-    const user = this.users.find(u => u.email.toLowerCase() === email.toLowerCase() && u.password === pass);
-    return this.simulateDelay(user ? { ...user } : null);
-  }
-
-  async addUser(userData: Omit<User, 'id'>): Promise<User> {
-    const existingUser = this.users.find(u => u.email.toLowerCase() === userData.email.toLowerCase());
-    if (existingUser) {
-        throw new Error("User with this email already exists.");
-    }
-    const newUser: User = { ...userData, id: generateId() };
-    this.users.push(newUser);
-    this.saveData();
-    return this.simulateDelay(newUser);
+    return Promise.resolve(this.users.find(u => u.id === userId));
   }
   
+  async addUser(userData: Omit<User, 'id'>): Promise<User> {
+    const newUser: User = { id: `user-${Date.now()}`, ...userData };
+    this.users.push(newUser);
+    this.saveDb();
+    return Promise.resolve(newUser);
+  }
+
   async updateUser(userId: string, updates: Partial<User>): Promise<User> {
-    const index = this.users.findIndex(u => u.id === userId);
-    if (index === -1) throw new Error("User not found");
-    this.users[index] = { ...this.users[index], ...updates };
-    this.saveData();
-    return this.simulateDelay(this.users[index]);
+    const userIndex = this.users.findIndex(u => u.id === userId);
+    if (userIndex === -1) throw new Error("User not found");
+    this.users[userIndex] = { ...this.users[userIndex], ...updates };
+    this.saveDb();
+    return Promise.resolve(this.users[userIndex]);
   }
 
   // --- Property Methods ---
   async getProperties(): Promise<Property[]> {
-    return this.simulateDelay([...this.properties]);
+    return Promise.resolve(this.properties);
   }
 
   async addProperty(propData: Omit<Property, 'id'>): Promise<Property> {
-    const newProperty: Property = { ...propData, id: generateId() };
-    this.properties.push(newProperty);
-    this.saveData();
-    return this.simulateDelay(newProperty);
+    const newProp: Property = { id: `prop-${Date.now()}`, ...propData };
+    this.properties.push(newProp);
+    this.saveDb();
+    return Promise.resolve(newProp);
   }
-  
+
   async updateProperty(propId: string, updates: Partial<Property>): Promise<Property> {
-    const index = this.properties.findIndex(p => p.id === propId);
-    if (index === -1) throw new Error("Property not found");
-    this.properties[index] = { ...this.properties[index], ...updates };
-    this.saveData();
-    return this.simulateDelay(this.properties[index]);
+    const propIndex = this.properties.findIndex(p => p.id === propId);
+    if (propIndex === -1) throw new Error("Property not found");
+    this.properties[propIndex] = { ...this.properties[propIndex], ...updates };
+    this.saveDb();
+    return Promise.resolve(this.properties[propIndex]);
   }
 
   async deleteProperty(propId: string): Promise<{ success: boolean }> {
     this.properties = this.properties.filter(p => p.id !== propId);
-    // Also delete associated calendar entries
-    this.calendars = this.calendars.filter(c => c.propertyId !== propId);
-    this.saveData();
-    return this.simulateDelay({ success: true });
+    this.calendarEntries = this.calendarEntries.filter(c => c.propertyId !== propId);
+    this.saveDb();
+    return Promise.resolve({ success: true });
   }
 
   // --- Calendar Methods ---
   async getCalendarEntries(startDate: string, endDate: string): Promise<CalendarEntry[]> {
-    const entries = this.calendars.filter(c => c.date >= startDate && c.date <= endDate);
-    return this.simulateDelay([...entries]);
+    const entries = this.calendarEntries.filter(c => c.date >= startDate && c.date <= endDate);
+    return Promise.resolve(entries);
   }
   
   async upsertCalendarEntry(entryData: Omit<CalendarEntry, 'id'>): Promise<CalendarEntry> {
-    const { propertyId, date } = entryData;
-    const existingIndex = this.calendars.findIndex(c => c.propertyId === propertyId && c.date === date);
+    const existingIndex = this.calendarEntries.findIndex(c => c.propertyId === entryData.propertyId && c.date === entryData.date);
 
     if (entryData.status === 'available') {
-      if (existingIndex !== -1) {
-        this.calendars.splice(existingIndex, 1);
-      }
-      this.saveData();
-      return this.simulateDelay({ ...entryData, id: '' });
+        if (existingIndex !== -1) {
+            this.calendarEntries.splice(existingIndex, 1);
+        }
+        this.saveDb();
+        return Promise.resolve({ ...entryData, id: '' });
     }
 
     if (existingIndex !== -1) {
-      this.calendars[existingIndex] = { ...this.calendars[existingIndex], ...entryData };
-      this.saveData();
-      return this.simulateDelay(this.calendars[existingIndex]);
+      const id = this.calendarEntries[existingIndex].id;
+      this.calendarEntries[existingIndex] = { ...entryData, id };
+      this.saveDb();
+      return Promise.resolve({ ...entryData, id });
     } else {
-      const newEntry: CalendarEntry = { ...entryData, id: generateId() };
-      this.calendars.push(newEntry);
-      this.saveData();
-      return this.simulateDelay(newEntry);
+      const newEntry: CalendarEntry = { id: `cal-${Date.now()}`, ...entryData };
+      this.calendarEntries.push(newEntry);
+      this.saveDb();
+      return Promise.resolve(newEntry);
     }
   }
-  
+
   async bulkUpdateCells(
     cells: { propertyId: string; date: string }[],
     action: { type: 'setStatus'; status: CalendarStatus } | { type: 'setPrice'; price: number } | { type: 'adjustPrice'; percentage: number }
   ): Promise<{ updatedCount: number }> {
     let updatedCount = 0;
-
     for (const cell of cells) {
-        const { propertyId, date: dateStr } = cell;
-        const property = this.properties.find(p => p.id === propertyId);
-        if (!property) continue;
+      const { propertyId, date: dateStr } = cell;
+      const property = this.properties.find(p => p.id === propertyId);
+      if (!property) continue;
 
-        let existingEntry = this.calendars.find(c => c.propertyId === propertyId && c.date === dateStr);
-        let currentPrice = existingEntry ? existingEntry.price : property.basePrice;
-        let currentStatus = existingEntry ? existingEntry.status : 'available';
-        
-        // Prevent updates on booked dates
-        if(currentStatus === 'booked' && (action.type === 'setPrice' || action.type === 'adjustPrice')) continue;
+      let existingEntry = this.calendarEntries.find(c => c.propertyId === propertyId && c.date === dateStr);
+      let currentPrice = existingEntry ? existingEntry.price : property.basePrice;
+      let currentStatus = existingEntry ? existingEntry.status : 'available';
 
+      if (currentStatus === 'booked' && (action.type === 'setPrice' || action.type === 'adjustPrice')) {
+          continue; // Skip price changes for booked dates
+      }
 
-        let newPrice = currentPrice;
-        let newStatus = currentStatus;
+      let newStatus = currentStatus;
+      let newPrice = currentPrice;
 
-        switch(action.type) {
-            case 'setStatus':
-                newStatus = action.status;
-                if (['blocked', 'owner'].includes(newStatus)) {
-                    newPrice = 0;
-                } else if (currentPrice === 0 && newStatus === 'available') {
-                    newPrice = property.basePrice;
-                }
-                break;
-            case 'setPrice':
-                newPrice = action.price;
-                if (currentStatus !== 'booked') {
-                    if (newPrice > 0 && ['blocked', 'owner'].includes(currentStatus)) {
-                        newStatus = 'available';
-                    } else if (newPrice <= 0) {
-                        newStatus = 'blocked';
-                    }
-                }
-                break;
-            case 'adjustPrice':
-                const priceToAdjust = (currentStatus === 'available' && currentPrice > 0) ? currentPrice : property.basePrice;
-                newPrice = Math.round(priceToAdjust * (1 + action.percentage / 100));
-                
-                if (currentStatus !== 'booked') {
-                    if (newPrice > 0) {
-                       newStatus = 'available';
-                    } else {
-                        newPrice = 0;
-                        newStatus = 'blocked';
-                    }
-                }
-                break;
-        }
-
-        if (newStatus !== currentStatus || newPrice !== currentPrice) {
-             this.upsertCalendarEntry({
-                propertyId: propertyId,
-                date: dateStr,
-                status: newStatus,
-                price: newPrice,
-                notes: existingEntry?.notes || '',
-            });
-            updatedCount++;
-        }
+      switch(action.type) {
+        case 'setStatus':
+            newStatus = action.status;
+            if (['blocked', 'owner'].includes(newStatus)) newPrice = 0;
+            else if (currentPrice === 0 && newStatus === 'available') newPrice = property.basePrice;
+            break;
+        case 'setPrice':
+            newPrice = action.price;
+            if (currentStatus !== 'booked') newStatus = newPrice > 0 ? 'available' : 'blocked';
+            break;
+        case 'adjustPrice':
+            const priceToAdjust = (currentStatus === 'available' && currentPrice > 0) ? currentPrice : property.basePrice;
+            newPrice = Math.round(priceToAdjust * (1 + action.percentage / 100));
+            if (currentStatus !== 'booked') newStatus = newPrice > 0 ? 'available' : 'blocked';
+            if (newPrice <=0) newPrice = 0;
+            break;
+      }
+      
+      if (newStatus !== currentStatus || newPrice !== currentPrice) {
+          await this.upsertCalendarEntry({
+              propertyId,
+              date: dateStr,
+              status: newStatus,
+              price: newPrice,
+              notes: existingEntry?.notes || ''
+          });
+          updatedCount++;
+      }
     }
-    
-    this.saveData();
-    return this.simulateDelay({ updatedCount });
+    return Promise.resolve({ updatedCount });
   }
 
   async mockIcalImport(propertyId: string): Promise<{ success: boolean; importedCount: number }> {
     const today = new Date();
     const importedDates = new Set<string>();
-    const importCount = 3 + Math.floor(Math.random() * 5); // Import 3 to 7 events
+    const importCount = 3 + Math.floor(Math.random() * 5);
 
     while(importedDates.size < importCount) {
-        const randomDayOffset = Math.floor(Math.random() * 60); // In the next 60 days
+        const randomDayOffset = Math.floor(Math.random() * 60);
         const date = new Date(today);
         date.setDate(today.getDate() + randomDayOffset);
-        const dateStr = formatDate(date);
-        importedDates.add(dateStr);
+        importedDates.add(formatDate(date));
     }
 
     for (const dateStr of importedDates) {
@@ -405,8 +235,7 @@ class DatabaseService {
         });
     }
 
-    this.saveData();
-    return this.simulateDelay({ success: true, importedCount: importedDates.size });
+    return { success: true, importedCount: importedDates.size };
   }
 }
 

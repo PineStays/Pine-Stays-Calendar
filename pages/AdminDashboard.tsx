@@ -7,7 +7,6 @@ import { AMENITIES, LOCATIONS, PROPERTY_TYPES, STATUS_COLORS, STATUSES } from '.
 import { Header } from '../Header';
 import { SparklesIcon, CalendarIcon, BuildingLibraryIcon, UsersIcon, XMarkIcon } from '../Icons';
 
-
 const formatDate = (date: Date) => date.toISOString().split('T')[0];
 const getDatesInRange = (startDate: Date, days: number) => {
     return Array.from({ length: days }, (_, i) => {
@@ -348,8 +347,22 @@ const UserFormModal: React.FC<UserFormModalProps> = ({ onClose, onSave }) => {
         e.preventDefault();
         setError('');
         setLoading(true);
+
         try {
-            await db.addUser({ name, email, password, role, status: 'active' });
+            const existingUsers = await db.getUsers();
+            if(existingUsers.some(u => u.email === email)) {
+                setError('A user with this email already exists.');
+                setLoading(false);
+                return;
+            }
+
+            await db.addUser({
+                name,
+                email,
+                password,
+                role,
+                status: 'active',
+            });
             onSave();
         } catch (err: any) {
             setError(err.message || 'Failed to create user.');
@@ -412,6 +425,7 @@ const IcalImportModal: React.FC<IcalImportModalProps> = ({ property, onClose, on
 
     const handleImport = async () => {
         setLoading(true);
+        // This is a mock, so we just wait
         await new Promise(res => setTimeout(res, 1500));
         onImport(property.id);
         setLoading(false);
@@ -463,17 +477,19 @@ const PropertyFormModal: React.FC<PropertyFormModalProps> = ({ property, owners,
         photoLink: '', pdfLink: '', amenities: [], description: '', status: 'active',
         propertyCode: '', bedrooms: 3, bathrooms: 3, area: '', maxCapacity: 10,
         poolType: 'none', videoLink: '', extraGuestCost: 0, houseRules: '', menuCardLink: '', inRoomDining: '', ownerId: '',
-        // FIX: Safely spread property to avoid runtime error if it's null.
         ...(property || {}),
     });
     const [loading, setLoading] = useState(false);
     const [isGenerating, setIsGenerating] = useState(false);
 
     useEffect(() => {
-        if (!property && (formData.location || formData.bedrooms)) {
-             setFormData(prev => ({ ...prev, propertyCode: generatePropertyCode(prev) }));
+        if (property) {
+           const {id, ...rest} = property;
+           setFormData(rest);
+        } else if (formData.location || formData.bedrooms) {
+           setFormData(prev => ({ ...prev, propertyCode: generatePropertyCode(prev) }));
         }
-    }, [formData.location, formData.bedrooms, property]);
+    }, [property, formData.location, formData.bedrooms]);
 
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
@@ -488,7 +504,6 @@ const PropertyFormModal: React.FC<PropertyFormModalProps> = ({ property, owners,
     const handleGenerateDescription = async () => {
         setIsGenerating(true);
         try {
-            // FIX: Adhere to coding guidelines by removing unnecessary type assertion for the API key.
             const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
             const prompt = `Generate a compelling, short marketing description for a vacation rental property.
             Property Name: "${formData.name}" Type: ${formData.type} in ${formData.location}

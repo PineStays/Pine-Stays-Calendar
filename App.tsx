@@ -1,7 +1,7 @@
 import React from 'react';
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './hooks/useAuth';
-import { ThemeProvider } from './Theme.tsx';
+import { ThemeProvider } from './Theme';
 import AdminDashboard from './pages/AdminDashboard';
 import AgentPortal from './pages/AgentPortal';
 import LoginPage from './pages/Login';
