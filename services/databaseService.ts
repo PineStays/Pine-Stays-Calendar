@@ -162,12 +162,17 @@ class DatabaseService {
     const property = this.properties.find(p => p.id === entryData.propertyId);
     if (!property) throw new Error("Property not found for calendar entry.");
 
-    // If the new state is default (available at base price, with no notes), remove any override entry.
-    if (entryData.status === 'available' && entryData.price === property.basePrice && (!entryData.notes || entryData.notes.trim() === '')) {
+    const hasNote = entryData.notes && entryData.notes.trim() !== '';
+    const isDefaultPriceAndStatus = entryData.status === 'available' && entryData.price === property.basePrice;
+
+    // An entry should be deleted ONLY if it's in the default state AND has no note.
+    // If it has a note, it should always be saved, regardless of price/status.
+    if (isDefaultPriceAndStatus && !hasNote) {
         if (existingIndex !== -1) {
             this.calendarEntries.splice(existingIndex, 1);
         }
         this.saveDb();
+        // Return a representation of the default state, which has no DB entry.
         return Promise.resolve({ ...entryData, id: '' });
     }
 

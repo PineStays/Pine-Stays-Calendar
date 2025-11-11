@@ -67,6 +67,11 @@
       .custom-scrollbar::-webkit-scrollbar-thumb:hover {
         background-color: hsl(var(--foreground));
       }
+       body {
+        background-color: hsl(var(--background));
+        color: hsl(var(--foreground));
+        font-family: 'Inter', sans-serif;
+      }
     </style>
      <script>
       // Prevents flash of unstyled content (FOUC) for dark mode
@@ -125,12 +130,22 @@
               }
             },
             animation: {
-              'fade-in': 'fadeIn 0.2s ease-out',
+              'fade-in': 'fadeIn 0.2s ease-out forwards',
+              'slide-in-from-left': 'slideInFromLeft 0.3s ease-out forwards',
+              'slide-out-to-left': 'slideOutToLeft 0.3s ease-in forwards',
             },
             keyframes: {
               fadeIn: {
-                '0%': { opacity: 0, transform: 'scale(0.95)' },
+                '0%': { opacity: 0, transform: 'scale(0.98)' },
                 '100%': { opacity: 1, transform: 'scale(1)' },
+              },
+              slideInFromLeft: {
+                '0%': { transform: 'translateX(-100%)' },
+                '100%': { transform: 'translateX(0)' },
+              },
+              slideOutToLeft: {
+                '0%': { transform: 'translateX(0)' },
+                '100%': { transform: 'translateX(-100%)' },
               }
             }
           },
@@ -150,7 +165,7 @@
 }
 </script>
 </head>
-  <body class="bg-background text-foreground font-sans">
+  <body>
     <div id="root"></div>
     <script type="module" src="/index.tsx"></script>
   </body>

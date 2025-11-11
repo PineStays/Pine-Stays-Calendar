@@ -108,7 +108,7 @@ const MemoizedCalendarCell = React.memo<{
             className={`border border-border text-center cursor-pointer transition-all relative ${STATUS_COLORS[status].bg} ${STATUS_COLORS[status].text} ${isSelected ? 'ring-2 ring-primary ring-offset-background ring-offset-2 z-10 bg-primary/20' : 'hover:shadow-md'}`}
             onClick={() => onCellSelect(prop.id, dateStr)}
         >
-            <div className="p-1 font-medium">
+            <div className="p-1 font-medium text-xs sm:text-sm">
                 {price > 0 ? `₹${price.toLocaleString('en-IN', { maximumFractionDigits: 0 })}` : <span className="capitalize text-xs">{statusText}</span>}
             </div>
             {entry?.notes && <span className="absolute top-1 right-1 w-2 h-2 bg-blue-500 rounded-full"></span>}
@@ -200,9 +200,9 @@ const CalendarManagement: React.FC<CalendarManagementProps> = ({ properties, ref
             <div className="bg-card p-4 sm:p-6 rounded-xl shadow-lg border border-border">
                 <div className="flex flex-col sm:flex-row justify-between sm:items-center mb-4 gap-4">
                      <h2 className="text-xl font-bold text-foreground">Availability Calendar</h2>
-                      <div className="flex items-center space-x-1 self-end">
+                      <div className="flex items-center space-x-1 self-end sm:self-center">
                         <button onClick={() => setStartDate(d => new Date(d.getFullYear(), d.getMonth() - 1, 1))} className="p-2.5 rounded-md hover:bg-muted text-muted-foreground">&lt;</button>
-                        <span className="font-semibold text-foreground text-lg w-36 text-center">{startDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric'})}</span>
+                        <span className="font-semibold text-foreground text-base sm:text-lg w-36 text-center">{startDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric'})}</span>
                         <button onClick={() => setStartDate(d => new Date(d.getFullYear(), d.getMonth() + 1, 1))} className="p-2.5 rounded-md hover:bg-muted text-muted-foreground">&gt;</button>
                      </div>
                 </div>
@@ -210,10 +210,10 @@ const CalendarManagement: React.FC<CalendarManagementProps> = ({ properties, ref
                     <table className="w-full border-collapse">
                         <thead>
                             <tr className="bg-muted/50">
-                                <th className="sticky left-0 bg-card z-10 p-2 border border-border w-40 min-w-[160px] text-left text-sm font-semibold text-foreground">Property</th>
+                                <th className="sticky left-0 bg-card z-10 p-2 border border-border w-32 min-w-[128px] sm:w-40 sm:min-w-[160px] text-left text-sm font-semibold text-foreground">Property</th>
                                 {dates.map(date => (
                                     <th key={date.toISOString()} className="p-2 border border-border text-center text-xs font-semibold text-muted-foreground">
-                                        <div className="min-w-[70px]">
+                                        <div className="min-w-[60px]">
                                           <div className={`${date.getDay() === 0 || date.getDay() === 6 ? 'text-primary font-bold' : ''}`}>{date.toLocaleDateString('en-US', { weekday: 'short' })}</div>
                                           <div>{date.toLocaleDateString('en-US', { day: 'numeric', month: 'short' })}</div>
                                         </div>
@@ -224,7 +224,7 @@ const CalendarManagement: React.FC<CalendarManagementProps> = ({ properties, ref
                         <tbody className="text-sm">
                             {activeProperties.map(prop => (
                                 <tr key={prop.id} className="hover:bg-muted/50">
-                                    <td className="sticky left-0 bg-card hover:bg-muted/50 z-10 p-2 border border-border font-semibold text-foreground w-40 min-w-[160px]">{prop.name}</td>
+                                    <td className="sticky left-0 bg-card hover:bg-muted/50 z-10 p-2 border border-border font-semibold text-foreground w-32 min-w-[128px] sm:w-40 sm:min-w-[160px]">{prop.name}</td>
                                     {dates.map(date => {
                                         const dateStr = formatDate(date);
                                         const isSelected = selectedCells.some(c => c.propertyId === prop.id && c.date === dateStr);
@@ -311,13 +311,13 @@ const PropertyManagement: React.FC<PropertyManagementProps> = ({ properties, use
                     <button onClick={() => { setEditingProperty(null); setIsModalOpen(true); }} className={`flex-shrink-0 ${baseButtonClass} bg-primary text-primary-foreground hover:bg-primary/90`}>Add New</button>
                 </div>
             </div>
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto custom-scrollbar">
                 <table className="w-full text-sm text-left text-muted-foreground">
                     <thead className="text-xs text-foreground uppercase bg-muted/50">
                         <tr>
                             <th scope="col" className="px-6 py-3">Name</th>
-                            <th scope="col" className="px-6 py-3">Location</th>
-                            <th scope="col" className="px-6 py-3">Owner</th>
+                            <th scope="col" className="px-6 py-3 hidden md:table-cell">Location</th>
+                            <th scope="col" className="px-6 py-3 hidden lg:table-cell">Owner</th>
                             <th scope="col" className="px-6 py-3">Status</th>
                             <th scope="col" className="px-6 py-3 text-right">Actions</th>
                         </tr>
@@ -328,17 +328,17 @@ const PropertyManagement: React.FC<PropertyManagementProps> = ({ properties, use
                             return (
                                 <tr key={prop.id} className="bg-card border-b border-border hover:bg-muted/50">
                                     <th scope="row" className="px-6 py-4 font-medium text-foreground whitespace-nowrap">{prop.name}</th>
-                                    <td className="px-6 py-4">{prop.location}</td>
-                                    <td className="px-6 py-4">{owner?.name || 'Unassigned'}</td>
+                                    <td className="px-6 py-4 hidden md:table-cell">{prop.location}</td>
+                                    <td className="px-6 py-4 hidden lg:table-cell">{owner?.name || 'Unassigned'}</td>
                                     <td className="px-6 py-4">
                                         <span className={`px-2 py-1 rounded-full text-xs font-semibold ${prop.status === 'active' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'}`}>
                                             {prop.status}
                                         </span>
                                     </td>
-                                    <td className="px-6 py-4 flex space-x-4 justify-end">
-                                        <button onClick={() => { setIcalProperty(prop); setIsIcalModalOpen(true); }} className="font-medium text-primary hover:underline">iCal Sync</button>
-                                        <button onClick={() => { setEditingProperty(prop); setIsModalOpen(true); }} className="font-medium text-primary hover:underline">Edit</button>
-                                        <button onClick={() => handleDeleteProperty(prop.id)} className="font-medium text-destructive hover:underline">Delete</button>
+                                    <td className="px-6 py-4 flex space-x-2 sm:space-x-4 justify-end">
+                                        <button onClick={() => { setIcalProperty(prop); setIsIcalModalOpen(true); }} className="font-medium text-primary hover:underline text-xs sm:text-sm">iCal Sync</button>
+                                        <button onClick={() => { setEditingProperty(prop); setIsModalOpen(true); }} className="font-medium text-primary hover:underline text-xs sm:text-sm">Edit</button>
+                                        <button onClick={() => handleDeleteProperty(prop.id)} className="font-medium text-destructive hover:underline text-xs sm:text-sm">Delete</button>
                                     </td>
                                 </tr>
                             )
@@ -373,12 +373,12 @@ const UserManagement: React.FC<UserManagementProps> = ({ users, refreshUsers }) 
                 <h2 className="text-xl font-bold text-foreground">Manage Users</h2>
                 <button onClick={() => setIsUserAddModalOpen(true)} className={`${baseButtonClass} bg-primary text-primary-foreground hover:bg-primary/90`}>Add User</button>
             </div>
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto custom-scrollbar">
                 <table className="w-full text-sm text-left text-muted-foreground">
                      <thead className="text-xs text-foreground uppercase bg-muted/50">
                         <tr>
                             <th scope="col" className="px-6 py-3">Name</th>
-                            <th scope="col" className="px-6 py-3">Email</th>
+                            <th scope="col" className="px-6 py-3 hidden md:table-cell">Email</th>
                             <th scope="col" className="px-6 py-3">Role</th>
                             <th scope="col" className="px-6 py-3">Status</th>
                             <th scope="col" className="px-6 py-3 text-right">Actions</th>
@@ -387,8 +387,8 @@ const UserManagement: React.FC<UserManagementProps> = ({ users, refreshUsers }) 
                     <tbody>
                         {users.map(user => (
                             <tr key={user.id} className="bg-card border-b border-border hover:bg-muted/50">
-                                <td className="px-6 py-4 font-medium text-foreground">{user.name}</td>
-                                <td className="px-6 py-4">{user.email}</td>
+                                <td className="px-6 py-4 font-medium text-foreground whitespace-nowrap">{user.name}</td>
+                                <td className="px-6 py-4 hidden md:table-cell">{user.email}</td>
                                 <td className="px-6 py-4 capitalize">{user.role}</td>
                                 <td className="px-6 py-4">
                                      <span className={`px-2 py-1 rounded-full text-xs font-semibold capitalize ${
@@ -733,7 +733,7 @@ const PropertyFormModal: React.FC<PropertyFormModalProps> = ({ property, owners,
          <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-0 sm:p-4 animate-fade-in">
             <div className="bg-card rounded-none sm:rounded-xl shadow-2xl w-full h-full sm:w-full sm:max-w-4xl sm:max-h-[90vh] overflow-y-auto border border-border">
                 <form onSubmit={handleSubmit} className="space-y-6 p-4 sm:p-6">
-                     <div className="flex justify-between items-center">
+                     <div className="flex justify-between items-center sticky top-0 bg-card/80 backdrop-blur-sm -m-6 p-6 z-10 border-b border-border">
                         <h2 className="text-xl font-bold text-foreground">{property ? 'Edit Property' : 'Add New Property'}</h2>
                         <button type="button" onClick={onClose} className="p-2 rounded-full hover:bg-muted"><XMarkIcon className="w-6 h-6"/></button>
                      </div>
@@ -858,7 +858,7 @@ const PropertyFormModal: React.FC<PropertyFormModalProps> = ({ property, owners,
                          </div>
                     </div>
                     
-                    <div className="mt-6 flex justify-end space-x-3">
+                    <div className="mt-6 flex justify-end space-x-3 sticky bottom-0 bg-card/80 backdrop-blur-sm -m-6 p-6 z-10 border-t border-border">
                         <button type="button" onClick={onClose} className={`${baseButtonClass} bg-secondary text-secondary-foreground hover:bg-secondary/80`}>Cancel</button>
                         <button type="submit" disabled={loading} className={`${baseButtonClass} bg-primary text-primary-foreground hover:bg-primary/90 disabled:bg-primary/50`}>{loading ? 'Saving...' : 'Save Property'}</button>
                     </div>
@@ -912,7 +912,7 @@ const AdminDashboard: React.FC = () => {
     ];
 
     return (
-        <div className="bg-background min-h-screen">
+        <div className="bg-muted/40 dark:bg-background min-h-screen">
             <Header
                 title="Admin Dashboard"
                 subtitle={`Welcome, ${user?.name}`}
@@ -927,9 +927,9 @@ const AdminDashboard: React.FC = () => {
                      <div className="text-center py-12"><div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary mx-auto"></div></div>
                 ) : (
                     <>
-                        <div className={`${view !== 'calendar' ? 'hidden' : ''}`}><CalendarManagement properties={properties} refreshAllData={fetchAllData} /></div>
-                        <div className={`${view !== 'properties' ? 'hidden' : ''}`}><PropertyManagement properties={properties} users={users} allAmenities={allAmenities} refreshAllData={fetchAllData} refreshSubData={refreshSubData} /></div>
-                        <div className={`${view !== 'users' ? 'hidden' : ''}`}><UserManagement users={users} refreshUsers={fetchAllData} /></div>
+                        <div className={`${view !== 'calendar' ? 'hidden' : 'block'}`}><CalendarManagement properties={properties} refreshAllData={fetchAllData} /></div>
+                        <div className={`${view !== 'properties' ? 'hidden' : 'block'}`}><PropertyManagement properties={properties} users={users} allAmenities={allAmenities} refreshAllData={fetchAllData} refreshSubData={refreshSubData} /></div>
+                        <div className={`${view !== 'users' ? 'hidden' : 'block'}`}><UserManagement users={users} refreshUsers={fetchAllData} /></div>
                     </>
                 )}
             </main>

@@ -1,11 +1,10 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { Link } from 'react-router-dom';
 import { Property, CalendarEntry, PropertyType, Location } from '../types';
 import { db } from '../services/databaseService';
 import { STATUS_COLORS, LOCATIONS, PROPERTY_TYPES } from '../constants';
 import { useAuth } from '../hooks/useAuth';
 import { Header } from '../Header';
-import { ClipboardIcon, CheckIcon, XMarkIcon, CalendarIcon } from '../Icons';
+import { ClipboardIcon, CheckIcon, XMarkIcon, CalendarIcon, FunnelIcon } from '../Icons';
 
 const formatDate = (date: Date) => date.toISOString().split('T')[0];
 
@@ -97,7 +96,7 @@ const AgentPortal: React.FC = () => {
     }] : [];
 
     return (
-        <div className="bg-background min-h-screen font-sans">
+        <div className="bg-muted/40 dark:bg-background min-h-screen font-sans">
             <Header
                 title="Pine Stays"
                 subtitle={`Welcome, ${user?.name}`}
@@ -106,11 +105,11 @@ const AgentPortal: React.FC = () => {
                  <span className="text-sm text-muted-foreground hidden md:block">
                     Updated: {lastUpdated ? `${Math.floor((new Date().getTime() - lastUpdated.getTime()) / 1000)}s ago` : '...'}
                  </span>
-                 <button onClick={fetchData} className="px-4 py-2 bg-secondary text-secondary-foreground text-sm font-semibold rounded-lg hover:bg-accent transition">
+                 <button onClick={fetchData} className="px-4 py-2 bg-secondary text-secondary-foreground text-sm font-semibold rounded-lg hover:bg-accent transition-colors">
                     Refresh
                  </button>
             </Header>
-            <main className="max-w-full mx-auto px-2 sm:px-4 lg:px-6 py-6">
+            <main className="max-w-full mx-auto px-2 sm:px-4 lg:px-6 py-4 sm:py-6">
                 <FilterBar
                     searchTerm={searchTerm} setSearchTerm={setSearchTerm}
                     locationFilter={locationFilter} setLocationFilter={setLocationFilter}
@@ -230,76 +229,63 @@ const FilterBar: React.FC<FilterBarProps> = (props) => {
 
     const FilterControls = () => (
       <div className="space-y-4">
-          <input type="text" placeholder="Search properties..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className={baseInputClass}/>
-          <select value={locationFilter} onChange={e => setLocationFilter(e.target.value as any)} className={baseInputClass}>
+          <input type="text" placeholder="Search properties..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className={`${baseInputClass} px-3`}/>
+          <select value={locationFilter} onChange={e => setLocationFilter(e.target.value as any)} className={`${baseInputClass} px-3`}>
               <option value="all">All Locations</option>
               {LOCATIONS.map(l => <option key={l} value={l}>{l}</option>)}
           </select>
-          <select value={typeFilter} onChange={e => setTypeFilter(e.target.value as any)} className={baseInputClass}>
+          <select value={typeFilter} onChange={e => setTypeFilter(e.target.value as any)} className={`${baseInputClass} px-3`}>
               <option value="all">All Types</option>
               {PROPERTY_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
           </select>
-          <button onClick={() => { onClear(); setIsFilterOpen(false); }} className="w-full text-sm text-center py-2 text-primary bg-primary/10 rounded-lg hover:bg-primary/20">Clear Filters</button>
+          <button onClick={() => { onClear(); setIsFilterOpen(false); }} className="w-full text-sm text-center py-2.5 text-primary bg-primary/10 rounded-lg hover:bg-primary/20">Clear Filters</button>
       </div>
     );
 
     return (
-        <div className="bg-card p-3 rounded-xl shadow-lg mb-6 border border-border">
-            {/* Mobile View: Collapsible Filters */}
-            <div className="md:hidden">
-              <div className="flex justify-between items-center">
-                 <button onClick={() => setIsFilterOpen(true)} className="px-4 py-2.5 bg-secondary rounded-lg text-sm font-semibold text-secondary-foreground">Filters ({propertyCount})</button>
-                 <div className="p-1 bg-secondary rounded-lg">
-                      <button onClick={() => setView('month')} className={`px-3 py-1 text-sm font-semibold rounded-md ${view === 'month' ? 'bg-card shadow text-primary' : 'text-muted-foreground'}`}>Month</button>
-                      <button onClick={() => setView('week')} className={`px-3 py-1 text-sm font-semibold rounded-md ${view === 'week' ? 'bg-card shadow text-primary' : 'text-muted-foreground'}`}>Week</button>
+        <div className="bg-card p-3 rounded-xl shadow-lg mb-4 sm:mb-6 border border-border">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+                 <div className="flex-1 min-w-0 hidden md:block">
+                     <input type="text" placeholder="Search properties..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className={`${baseInputClass} pl-4`}/>
                  </div>
-              </div>
-              {isFilterOpen && (
-                 <div className="fixed inset-0 bg-black/50 z-40" onClick={() => setIsFilterOpen(false)}>
-                    <div className="absolute bottom-0 left-0 right-0 bg-card border-t border-border p-4 rounded-t-2xl shadow-2xl animate-fade-in" onClick={e => e.stopPropagation()}>
-                       <h3 className="text-lg font-bold mb-4">Filters</h3>
-                       <FilterControls />
-                    </div>
-                 </div>
-              )}
-            </div>
-
-            {/* Desktop View: Expanded Filters */}
-            <div className="hidden md:flex flex-wrap items-center gap-x-4 gap-y-2">
-                 <input type="text" placeholder="Search properties..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className={baseInputClass.replace('w-full', '')}/>
-                <select value={locationFilter} onChange={e => setLocationFilter(e.target.value as any)} className={baseInputClass.replace('w-full', '')}>
-                    <option value="all">All Locations</option>
-                    {LOCATIONS.map(l => <option key={l} value={l}>{l}</option>)}
-                </select>
-                <select value={typeFilter} onChange={e => setTypeFilter(e.target.value as any)} className={baseInputClass.replace('w-full', '')}>
-                    <option value="all">All Types</option>
-                    {PROPERTY_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-                </select>
-                <button onClick={onClear} className="text-sm text-primary hover:underline">Clear Filters</button>
-                <span className="flex-grow"></span>
-                 <span className="text-sm font-medium text-muted-foreground">{propertyCount} properties showing</span>
-            </div>
-
-            <div className="flex justify-between items-center border-t border-border mt-3 pt-3">
-                 <div className="flex items-center space-x-1 sm:space-x-2">
+                 <div className="flex items-center space-x-1 sm:space-x-2 flex-grow sm:flex-grow-0 justify-center">
                     <button onClick={() => onDateNav(-1)} className="p-2.5 rounded-full hover:bg-muted text-muted-foreground transition-colors">&lt;</button>
                     <div className="relative">
                         <button
                             ref={datePickerToggleRef}
                             onClick={() => setIsDatePickerOpen(prev => !prev)}
-                            className="font-bold text-foreground text-base sm:text-lg px-4 py-2.5 rounded-lg hover:bg-muted transition-colors text-center w-56 flex items-center justify-center gap-x-2"
+                            className="font-bold text-foreground text-base sm:text-lg px-2 py-2.5 rounded-lg hover:bg-muted transition-colors text-center w-40 sm:w-56 flex items-center justify-center gap-x-2"
                         >
                             <CalendarIcon className="w-5 h-5 text-muted-foreground" />
-                            <span>{currentDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric'})}</span>
+                            <span className="truncate">{currentDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric'})}</span>
                         </button>
                         {isDatePickerOpen && <DatePicker />}
                     </div>
                     <button onClick={() => onDateNav(1)} className="p-2.5 rounded-full hover:bg-muted text-muted-foreground transition-colors">&gt;</button>
-                 </div>
-                 <div className="p-1 bg-secondary rounded-lg hidden md:block">
-                    <button onClick={() => setView('month')} className={`px-3 py-1 text-sm font-semibold rounded-md ${view === 'month' ? 'bg-card shadow text-primary' : 'text-muted-foreground'}`}>Month</button>
-                    <button onClick={() => setView('week')} className={`px-3 py-1 text-sm font-semibold rounded-md ${view === 'week' ? 'bg-card shadow text-primary' : 'text-muted-foreground'}`}>Week</button>
-                 </div>
+                </div>
+                <div className="flex items-center gap-x-3 w-full sm:w-auto">
+                    <div className="md:hidden flex-1">
+                         <button onClick={() => setIsFilterOpen(true)} className="w-full flex items-center justify-center gap-x-2 text-left px-4 py-2.5 bg-secondary rounded-lg text-sm font-semibold text-secondary-foreground">
+                            <FunnelIcon className="w-5 h-5"/>
+                            <span>Filters ({propertyCount})</span>
+                         </button>
+                    </div>
+                    <div className="p-1 bg-secondary rounded-lg flex-shrink-0">
+                        <button onClick={() => setView('month')} className={`px-3 py-1 text-sm font-semibold rounded-md ${view === 'month' ? 'bg-card shadow text-primary' : 'text-muted-foreground'}`}>Month</button>
+                        <button onClick={() => setView('week')} className={`px-3 py-1 text-sm font-semibold rounded-md ${view === 'week' ? 'bg-card shadow text-primary' : 'text-muted-foreground'}`}>Week</button>
+                    </div>
+                </div>
+            </div>
+            {/* Mobile Filter Slide-over */}
+            <div className={`fixed inset-0 z-40 transition-opacity duration-300 ${isFilterOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`} onClick={() => setIsFilterOpen(false)}>
+                <div className="absolute inset-0 bg-black/50"></div>
+                <div className={`absolute top-0 right-0 h-full bg-card border-l border-border p-4 shadow-2xl w-full max-w-sm transition-transform duration-300 ease-in-out ${isFilterOpen ? 'translate-x-0' : 'translate-x-full'}`} onClick={e => e.stopPropagation()}>
+                    <div className="flex justify-between items-center mb-4">
+                        <h3 className="text-lg font-bold">Filters</h3>
+                        <button onClick={() => setIsFilterOpen(false)} className="p-2 -m-2 rounded-full hover:bg-muted"><XMarkIcon className="w-6 h-6"/></button>
+                    </div>
+                    <FilterControls />
+                </div>
             </div>
         </div>
     );
@@ -321,12 +307,12 @@ const PropertyCalendarGrid: React.FC<PropertyCalendarGridProps> = ({ properties,
                 <table className="w-full border-collapse">
                     <thead className="text-xs text-muted-foreground">
                         <tr className="bg-muted/50">
-                            <th className="sticky left-0 bg-card z-10 p-2 border-r border-b border-border w-40 min-w-[160px] text-left font-semibold text-foreground">Property</th>
+                            <th className="sticky left-0 bg-card z-10 p-2 border-r border-b border-border w-32 sm:w-40 min-w-[128px] sm:min-w-[160px] text-left font-semibold text-foreground">Property</th>
                             {dates.map(date => (
                                 <th key={date.toISOString()} className="p-2 border-b border-border text-center font-medium">
-                                    <div className={`min-w-[60px] ${date.getDay() === 0 || date.getDay() === 6 ? 'text-primary' : ''}`}>
+                                    <div className={`min-w-[50px] sm:min-w-[60px] ${date.getDay() === 0 || date.getDay() === 6 ? 'text-primary' : ''}`}>
                                         <div>{date.toLocaleDateString('en-US', { weekday: 'short' })}</div>
-                                        <div className="text-lg font-semibold">{date.getDate()}</div>
+                                        <div className="text-base sm:text-lg font-semibold">{date.getDate()}</div>
                                     </div>
                                 </th>
                             ))}
@@ -335,7 +321,7 @@ const PropertyCalendarGrid: React.FC<PropertyCalendarGridProps> = ({ properties,
                     <tbody className="text-xs">
                         {properties.map(prop => (
                             <tr key={prop.id}>
-                                <td className="sticky left-0 bg-card hover:bg-muted/50 z-10 p-2 border-r border-b border-border font-bold w-40 min-w-[160px] cursor-pointer text-teal-600 dark:text-teal-400 hover:opacity-80 transition-opacity" onClick={() => onCellClick(prop, formatDate(dates[0]))}>{prop.name}</td>
+                                <td className="sticky left-0 bg-card hover:bg-muted/50 z-10 p-2 border-r border-b border-border font-bold w-32 sm:w-40 min-w-[128px] sm:min-w-[160px] cursor-pointer text-teal-600 dark:text-teal-400 hover:opacity-80 transition-opacity" onClick={() => onCellClick(prop, formatDate(dates[0]))}>{prop.name}</td>
                                 {dates.map(date => {
                                     const dateStr = formatDate(date);
                                     const entry = calendarData.get(`${prop.id}-${dateStr}`);
@@ -344,8 +330,8 @@ const PropertyCalendarGrid: React.FC<PropertyCalendarGridProps> = ({ properties,
                                     const statusText = status === 'owner' ? 'Booked O' : status;
                                     return (
                                         <td key={dateStr} className={`border-b border-border text-center cursor-pointer transition-all duration-150 hover:ring-2 hover:ring-ring hover:z-20 ${STATUS_COLORS[status].bg} ${STATUS_COLORS[status].text}`} onClick={() => onCellClick(prop, dateStr)}>
-                                            <div className="py-2 px-1 font-semibold">
-                                                {status === 'available' ? `₹${price.toLocaleString('en-IN')}` : <span className="capitalize">{statusText}</span>}
+                                            <div className="py-2 px-1 font-semibold text-xs sm:text-sm">
+                                                {status === 'available' ? `₹${(price/1000).toFixed(0)}k` : <span className="capitalize">{statusText}</span>}
                                             </div>
                                         </td>
                                     );
@@ -377,18 +363,7 @@ interface PropertyDetailsModalProps {
 }
 const PropertyDetailsModal: React.FC<PropertyDetailsModalProps> = ({ property, date, calendarEntry, onClose }) => {
     const [copied, setCopied] = useState(false);
-    const modalRef = useRef<HTMLDivElement>(null);
-
-    useEffect(() => {
-        const handleClickOutside = (event: MouseEvent) => {
-            if (modalRef.current && !modalRef.current.contains(event.target as Node)) {
-                onClose();
-            }
-        };
-        document.addEventListener("mousedown", handleClickOutside);
-        return () => document.removeEventListener("mousedown", handleClickOutside);
-    }, [onClose]);
-
+    
     const handleCopy = () => {
         const poolText = property.poolType === 'none' ? 'No' : `${property.poolType.charAt(0).toUpperCase() + property.poolType.slice(1)} Pool`;
         
@@ -447,64 +422,41 @@ Menu Card: ${menuCardLinkText}
     const statusText = statusForDate === 'owner' ? 'Booked O' : statusForDate;
 
     return (
-        <div className="fixed inset-0 bg-black/60 z-40 flex items-center justify-center p-0 sm:p-4 backdrop-blur-sm animate-fade-in">
-            <div ref={modalRef} className="bg-card border border-border rounded-none sm:rounded-2xl shadow-2xl w-full h-full sm:w-full sm:max-w-4xl sm:max-h-[90vh] flex flex-col md:flex-row overflow-hidden">
-                <div className="w-full md:w-1/2 relative bg-muted/50 flex items-center justify-center p-4 md:p-0">
+        <div className="fixed inset-0 bg-black/60 z-40 flex items-center justify-center p-0 backdrop-blur-sm animate-fade-in">
+            <div className="bg-card w-full h-full sm:w-full sm:max-w-4xl sm:h-auto sm:max-h-[90vh] flex flex-col sm:rounded-2xl shadow-2xl border border-border">
+                <div className="relative h-48 sm:h-64 flex-shrink-0 bg-muted/50">
                     {property.photoLink ? (
-                        <img src={property.photoLink} alt={property.name} className="object-contain max-w-full max-h-full rounded-lg shadow-lg" />
+                        <img src={property.photoLink} alt={property.name} className="object-cover w-full h-full sm:rounded-t-2xl" />
                     ) : (
-                        <div className="flex flex-col items-center justify-center text-muted-foreground">
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
+                        <div className="w-full h-full flex flex-col items-center justify-center text-muted-foreground sm:rounded-t-2xl">
+                             <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                             </svg>
                             <span className="mt-2 text-sm">No image available</span>
                         </div>
                     )}
-                    <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex space-x-2">
-                        <span className="w-2.5 h-2.5 bg-white rounded-full opacity-90 ring-1 ring-black/20"></span>
-                        <span className="w-2.5 h-2.5 bg-white rounded-full opacity-40 ring-1 ring-black/20"></span>
-                        <span className="w-2.5 h-2.5 bg-white rounded-full opacity-40 ring-1 ring-black/20"></span>
-                    </div>
-                    <button onClick={onClose} className="absolute top-4 right-4 text-white bg-black/40 rounded-full p-2 hover:bg-black/60 transition"><XMarkIcon className="w-5 h-5"/></button>
+                    <button onClick={onClose} className="absolute top-4 right-4 text-white bg-black/40 rounded-full p-1.5 hover:bg-black/60 transition"><XMarkIcon className="w-5 h-5"/></button>
                 </div>
-                <div className="w-full md:w-1/2 p-6 md:p-8 flex flex-col overflow-y-auto">
+                <div className="p-4 sm:p-6 flex flex-col overflow-y-auto flex-grow">
                     <div className="flex-grow">
-                        <h2 className="text-3xl font-bold mb-1 text-foreground">{property.name}</h2>
-                        <p className="text-sm text-muted-foreground mb-6">{property.type} &middot; {property.location}</p>
+                        <h2 className="text-2xl sm:text-3xl font-bold mb-1 text-foreground">{property.name}</h2>
+                        <p className="text-sm text-muted-foreground mb-4">{property.type} &middot; {property.location}</p>
                         
-                        {property.description && <p className="text-foreground/80 text-sm mb-6">{property.description}</p>}
+                        {property.description && <p className="text-foreground/80 text-sm mb-4">{property.description}</p>}
 
-                        <h4 className="font-semibold mb-2 text-foreground">Amenities</h4>
-                        <div className="flex flex-wrap gap-2 mb-6">
-                            {property.amenities.map(a => <span key={a} className="bg-primary/10 text-primary text-xs font-medium px-2.5 py-1 rounded-full">{a}</span>)}
-                        </div>
-
-                        {property.houseRules && (
-                            <>
-                                <h4 className="font-semibold mb-2 text-foreground mt-6">House Rules</h4>
-                                <p className="text-muted-foreground text-sm mb-6 whitespace-pre-wrap">{property.houseRules}</p>
-                            </>
-                        )}
-
-                        <div className="bg-muted/50 p-4 rounded-xl mb-4 border border-border">
+                        <div className="bg-muted/50 p-4 rounded-xl border border-border">
                              <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
-                                <div className="text-muted-foreground">Property Code</div><div className="font-semibold text-foreground">{property.propertyCode}</div>
-                                <div className="text-muted-foreground">Bedrooms / Bathrooms</div><div className="font-semibold text-foreground">{property.bedrooms} BR / {property.bathrooms} BA</div>
+                                <div className="text-muted-foreground">Code</div><div className="font-semibold text-foreground truncate">{property.propertyCode}</div>
+                                <div className="text-muted-foreground">Bed/Bath</div><div className="font-semibold text-foreground">{property.bedrooms}BR / {property.bathrooms}BA</div>
                                 <div className="text-muted-foreground">Area</div><div className="font-semibold text-foreground">{property.area}</div>
                                 <div className="text-muted-foreground">Pool</div><div className="font-semibold text-foreground capitalize">{property.poolType === 'none' ? 'No' : property.poolType}</div>
-                                <div className="text-muted-foreground">Base / Max Guests</div><div className="font-semibold text-foreground">{property.capacity} / {property.maxCapacity}</div>
-                                {property.extraGuestCost && property.extraGuestCost > 0 ? (
-                                    <>
-                                        <div className="text-muted-foreground">Extra Guest Cost</div>
-                                        <div className="font-semibold text-foreground">₹{property.extraGuestCost.toLocaleString('en-IN')}/person</div>
-                                    </>
-                                ) : null}
-                                {property.securityDeposit && property.securityDeposit > 0 ? (
-                                    <>
-                                        <div className="text-muted-foreground">Security Deposit</div>
-                                        <div className="font-semibold text-foreground">₹{property.securityDeposit.toLocaleString('en-IN')}</div>
-                                    </>
-                                ) : null}
+                                <div className="text-muted-foreground">Guests</div><div className="font-semibold text-foreground">{property.capacity} / {property.maxCapacity}</div>
+                                {property.extraGuestCost && property.extraGuestCost > 0 &&
+                                    <><div className="text-muted-foreground">Extra Guest</div><div className="font-semibold text-foreground">₹{property.extraGuestCost.toLocaleString('en-IN')}/p</div></>
+                                }
+                                {property.securityDeposit && property.securityDeposit > 0 &&
+                                     <><div className="text-muted-foreground">Deposit</div><div className="font-semibold text-foreground">₹{property.securityDeposit.toLocaleString('en-IN')}</div></>
+                                }
                              </div>
                             <p className="text-sm text-muted-foreground mt-4">Base Price</p>
                             <p className="text-2xl font-bold text-foreground">₹{property.basePrice.toLocaleString('en-IN')}<span className="font-normal text-base text-muted-foreground">/night</span></p>
@@ -517,21 +469,14 @@ Menu Card: ${menuCardLinkText}
                             )}
                         </div>
                     </div>
-                    
-                    <div className="mt-auto pt-6 flex flex-col gap-3">
-                        <div className="flex gap-3">
-                            <a href={property.pdfLink} target="_blank" rel="noopener noreferrer" className="flex-1 text-center px-4 py-3 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 font-semibold shadow-sm transition">View Brochure</a>
-                            <button onClick={handleCopy} className="flex-1 flex items-center justify-center space-x-2 px-4 py-3 bg-secondary text-secondary-foreground rounded-lg hover:bg-accent font-semibold transition">
-                                {copied ? <CheckIcon className="w-5 h-5 text-primary"/> : <ClipboardIcon className="w-5 h-5"/>}
-                                <span>{copied ? 'Copied!' : 'Copy Details'}</span>
-                            </button>
-                        </div>
-                        {(property.videoLink || property.menuCardLink) && (
-                            <div className="flex gap-3">
-                                {property.videoLink && <a href={property.videoLink} target="_blank" rel="noopener noreferrer" className="flex-1 text-center px-4 py-3 bg-secondary text-secondary-foreground rounded-lg hover:bg-accent font-semibold transition">Watch Video</a>}
-                                {property.menuCardLink && <a href={property.menuCardLink} target="_blank" rel="noopener noreferrer" className="flex-1 text-center px-4 py-3 bg-secondary text-secondary-foreground rounded-lg hover:bg-accent font-semibold transition">View Menu</a>}
-                            </div>
-                        )}
+                </div>
+                <div className="p-4 sm:p-6 mt-auto border-t border-border flex flex-col gap-3 flex-shrink-0">
+                    <div className="flex gap-3">
+                        <a href={property.pdfLink} target="_blank" rel="noopener noreferrer" className="flex-1 text-center px-4 py-3 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 font-semibold shadow-sm transition">View Brochure</a>
+                        <button onClick={handleCopy} className="flex-1 flex items-center justify-center space-x-2 px-4 py-3 bg-secondary text-secondary-foreground rounded-lg hover:bg-accent font-semibold transition">
+                            {copied ? <CheckIcon className="w-5 h-5 text-primary"/> : <ClipboardIcon className="w-5 h-5"/>}
+                            <span>{copied ? 'Copied!' : 'Copy Details'}</span>
+                        </button>
                     </div>
                 </div>
             </div>
