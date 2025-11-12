@@ -1,13 +1,17 @@
+
 import React from 'react';
 import { useAuth } from '../hooks/useAuth';
+// FIX: Use react-router-dom v6 import (useNavigate)
 import { useNavigate } from 'react-router-dom';
 
 const PendingApprovalPage: React.FC = () => {
     const { user, logout } = useAuth();
+    // FIX: Use useNavigate instead of useHistory
     const navigate = useNavigate();
 
     const handleLogout = () => {
         logout();
+        // FIX: Use navigate instead of history.push
         navigate('/login');
     };
 

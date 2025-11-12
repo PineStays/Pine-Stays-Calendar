@@ -1,13 +1,18 @@
+
 import React, { useState } from 'react';
+// FIX: Use react-router-dom v6 imports (useNavigate)
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { ThemeToggle } from '../Header';
+// FIX: Use firebase v8 compat namespace for FirebaseError
+import { firebase } from '../services/firebase';
 
 const LoginPage: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  // FIX: Use useNavigate instead of useHistory
   const navigate = useNavigate();
   const auth = useAuth();
 
@@ -17,46 +22,31 @@ const LoginPage: React.FC = () => {
     setLoading(true);
     
     try {
-      const user = await auth.login(email, password);
-      if (user) {
-        // App.tsx routing will handle redirection based on role and status
-        navigate('/');
-      } else {
-        setError('Invalid email or password.');
-      }
+      await auth.login(email, password);
+      // App.tsx routing will handle redirection based on role and status
+      // FIX: Use navigate instead of history.push
+      navigate('/');
     } catch (err) {
-      setError('An error occurred. Please try again.');
+      // FIX: Check for error code property instead of firebase.FirebaseError instance
+      const error = err as any;
+      if (error.code) {
+        switch (error.code) {
+          case 'auth/user-not-found':
+          case 'auth/wrong-password':
+          case 'auth/invalid-credential':
+            setError('Invalid email or password.');
+            break;
+          default:
+            setError('An error occurred. Please try again.');
+            break;
+        }
+      } else {
+        setError('An unexpected error occurred. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
   };
-
-  const handleQuickLogin = async (role: 'admin' | 'agent' | 'owner') => {
-    setError('');
-    setLoading(true);
-    
-    const credentials = {
-        admin: { email: 'admin@pinestays.com', password: 'password123' },
-        agent: { email: 'agent@pinestays.com', password: 'password123' },
-        owner: { email: 'owner@pinestays.com', password: 'password123' }
-    };
-
-    const { email, password } = credentials[role];
-
-    try {
-      const user = await auth.login(email, password);
-      if (user) {
-        navigate('/');
-      } else {
-        setError(`Quick login for ${role} failed. Please check seed data.`);
-      }
-    } catch (err) {
-      setError('An error occurred during quick login. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4 font-sans">
@@ -114,43 +104,10 @@ const LoginPage: React.FC = () => {
               </button>
             </div>
           </form>
-           <div className="relative my-6">
-                <div className="absolute inset-0 flex items-center" aria-hidden="true">
-                    <div className="w-full border-t border-border"></div>
-                </div>
-                <div className="relative flex justify-center text-sm">
-                    <span className="px-2 bg-card text-muted-foreground">Quick Access for Testing</span>
-                </div>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <button
-                    type="button"
-                    onClick={() => handleQuickLogin('admin')}
-                    disabled={loading}
-                    className="w-full flex justify-center py-2.5 px-4 border border-input rounded-lg shadow-sm text-sm font-medium text-secondary-foreground bg-secondary hover:bg-accent disabled:opacity-60"
-                >
-                    Admin
-                </button>
-                <button
-                    type="button"
-                    onClick={() => handleQuickLogin('agent')}
-                    disabled={loading}
-                    className="w-full flex justify-center py-2.5 px-4 border border-input rounded-lg shadow-sm text-sm font-medium text-secondary-foreground bg-secondary hover:bg-accent disabled:opacity-60"
-                >
-                    Agent
-                </button>
-                <button
-                    type="button"
-                    onClick={() => handleQuickLogin('owner')}
-                    disabled={loading}
-                    className="w-full flex justify-center py-2.5 px-4 border border-input rounded-lg shadow-sm text-sm font-medium text-secondary-foreground bg-secondary hover:bg-accent disabled:opacity-60"
-                >
-                    Owner
-                </button>
-            </div>
-           <div className="text-center text-sm mt-6">
+          
+           <div className="text-center text-sm pt-6 border-t border-border">
                 <p className="text-muted-foreground">
-                    Agent?{' '}
+                    Don't have an agent account?{' '}
                     <Link to="/signup" className="font-medium text-primary hover:text-primary/90">
                         Create an account
                     </Link>

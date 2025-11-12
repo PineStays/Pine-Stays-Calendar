@@ -10,9 +10,8 @@ export type UserRole = 'admin' | 'agent' | 'owner';
 export type UserStatus = 'active' | 'pending' | 'inactive';
 
 export interface User {
-  id: string;
+  id: string; // This will be the Firebase Auth UID
   email: string;
-  password: string;
   name: string;
   role: UserRole;
   status: UserStatus;
@@ -45,7 +44,7 @@ export interface Property {
 }
 
 export interface CalendarEntry {
-  id: string;
+  id: string; // Composite key: `${propertyId}_${date}`
   propertyId: string;
   date: string; // YYYY-MM-DD
   status: CalendarStatus;

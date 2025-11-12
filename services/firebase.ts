@@ -1,23 +1,28 @@
-import { initializeApp } from "firebase/app";
-import { getAnalytics } from "firebase/analytics";
-import { getFirestore } from "firebase/firestore";
-import { getAuth } from "firebase/auth";
+
+// FIX: Update Firebase imports to use v8 compatibility mode
+import firebase from "firebase/compat/app";
+import "firebase/compat/analytics";
+import "firebase/compat/firestore";
+import "firebase/compat/auth";
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
-  apiKey: "AIzaSyCVlaEuLGK4-AQx5QrgSGW06DwvRiFqWwI",
-  authDomain: "pine-stays-calendar-9823e.firebaseapp.com",
-  projectId: "pine-stays-calendar-9823e",
-  storageBucket: "pine-stays-calendar-9823e.firebasestorage.app",
-  messagingSenderId: "960055654394",
-  appId: "1:960055654394:web:e6789ad79df0e6aef4d643",
-  measurementId: "G-TBBPZYPWZ7"
+  apiKey: "AIzaSyA3Blel8K0_QYSSgoqVWdpogUVrWaS-XxU",
+  authDomain: "pinestayscalendar.firebaseapp.com",
+  projectId: "pinestayscalendar",
+  storageBucket: "pinestayscalendar.firebasestorage.app",
+  messagingSenderId: "689496588721",
+  appId: "1:689496588721:web:35117bb9fb43e114bafd90",
+  measurementId: "G-EG4CV8B7NE"
 };
 
 
-const app = initializeApp(firebaseConfig);
-const analytics = getAnalytics(app);
+// FIX: Update Firebase initialization to use v8 compatibility mode
+const app = firebase.initializeApp(firebaseConfig);
+if (firebase.analytics.isSupported()) {
+  firebase.analytics(app);
+}
 
-export const auth = getAuth(app);
-export const db_firebase = getFirestore(app);
-export { firebaseConfig };
+export const auth = firebase.auth();
+export const db_firebase = firebase.firestore();
+export { firebase, firebaseConfig };

@@ -7,7 +7,12 @@ import { INITIAL_AMENITIES, LOCATIONS, PROPERTY_TYPES, STATUS_COLORS, STATUSES }
 import { Header } from '../Header';
 import { SparklesIcon, CalendarIcon, BuildingLibraryIcon, UsersIcon, XMarkIcon } from '../Icons';
 
-const formatDate = (date: Date) => date.toISOString().split('T')[0];
+const formatDate = (date: Date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+};
 const getDatesInRange = (startDate: Date, days: number) => {
     return Array.from({ length: days }, (_, i) => {
         const date = new Date(startDate);
@@ -273,6 +278,9 @@ const PropertyManagement: React.FC<PropertyManagementProps> = ({ properties, use
     const [searchTerm, setSearchTerm] = useState('');
     const [isIcalModalOpen, setIsIcalModalOpen] = useState(false);
     const [icalProperty, setIcalProperty] = useState<Property | null>(null);
+    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+    const [propertyToDelete, setPropertyToDelete] = useState<Property | null>(null);
+    const [isDeleting, setIsDeleting] = useState(false);
 
     const filteredProperties = useMemo(() => {
         return properties.filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()));
@@ -289,16 +297,21 @@ const PropertyManagement: React.FC<PropertyManagementProps> = ({ properties, use
         alert('iCal calendar synced successfully! The calendar view has been updated.');
         refreshAllData();
     };
-
-    const handleDeleteProperty = async (propertyId: string) => {
-        if (window.confirm("Are you sure you want to delete this property? This cannot be undone.")) {
-            try {
-                await db.deleteProperty(propertyId);
-                refreshAllData();
-            } catch (error) {
-                console.error("Failed to delete property:", error);
-                alert("An error occurred while deleting the property.");
-            }
+    
+    const handleConfirmDelete = async () => {
+        if (!propertyToDelete) return;
+        setIsDeleting(true);
+        try {
+            await db.deletePropertyAndEntries(propertyToDelete.id);
+            setIsDeleteModalOpen(false);
+            setPropertyToDelete(null);
+            refreshAllData();
+        } catch (error) {
+            console.error("Failed to delete property:", error);
+            alert("An error occurred while deleting the property and its calendar entries.");
+            setIsDeleteModalOpen(false);
+        } finally {
+            setIsDeleting(false);
         }
     };
 
@@ -338,7 +351,7 @@ const PropertyManagement: React.FC<PropertyManagementProps> = ({ properties, use
                                     <td className="px-6 py-4 flex space-x-2 sm:space-x-4 justify-end">
                                         <button onClick={() => { setIcalProperty(prop); setIsIcalModalOpen(true); }} className="font-medium text-primary hover:underline text-xs sm:text-sm">iCal Sync</button>
                                         <button onClick={() => { setEditingProperty(prop); setIsModalOpen(true); }} className="font-medium text-primary hover:underline text-xs sm:text-sm">Edit</button>
-                                        <button onClick={() => handleDeleteProperty(prop.id)} className="font-medium text-destructive hover:underline text-xs sm:text-sm">Delete</button>
+                                        <button onClick={() => { setPropertyToDelete(prop); setIsDeleteModalOpen(true); }} className="font-medium text-destructive hover:underline text-xs sm:text-sm">Delete</button>
                                     </td>
                                 </tr>
                             )
@@ -348,6 +361,14 @@ const PropertyManagement: React.FC<PropertyManagementProps> = ({ properties, use
             </div>
              {isModalOpen && <PropertyFormModal property={editingProperty} owners={users.filter(u => u.role === 'owner')} allAmenities={allAmenities} onClose={() => setIsModalOpen(false)} onSave={handleSave} refreshParentData={refreshSubData} />}
              {isIcalModalOpen && icalProperty && <IcalImportModal property={icalProperty} onClose={() => setIsIcalModalOpen(false)} onImport={handleIcalImport} />}
+             <DeleteConfirmationModal 
+                isOpen={isDeleteModalOpen}
+                onClose={() => setIsDeleteModalOpen(false)}
+                onConfirm={handleConfirmDelete}
+                title="Confirm Property Deletion"
+                description={`Are you sure you want to permanently delete the property "${propertyToDelete?.name || ''}"? This action is irreversible and will also delete all associated calendar data.`}
+                loading={isDeleting}
+            />
         </div>
     );
 };
@@ -358,13 +379,34 @@ interface UserManagementProps {
     refreshUsers: () => void;
 }
 const UserManagement: React.FC<UserManagementProps> = ({ users, refreshUsers }) => {
+    const { user: currentUser } = useAuth();
     const [isUserAddModalOpen, setIsUserAddModalOpen] = useState(false);
     const [editingUser, setEditingUser] = useState<User | null>(null);
+    const [isDeleteUserModalOpen, setIsDeleteUserModalOpen] = useState(false);
+    const [userToDelete, setUserToDelete] = useState<User | null>(null);
+    const [isDeletingUser, setIsDeletingUser] = useState(false);
 
     const handleSaveUser = () => {
         setIsUserAddModalOpen(false);
         setEditingUser(null);
         refreshUsers();
+    };
+
+    const handleConfirmUserDelete = async () => {
+        if (!userToDelete) return;
+        setIsDeletingUser(true);
+        try {
+            await db.deleteUser(userToDelete.id);
+            setIsDeleteUserModalOpen(false);
+            setUserToDelete(null);
+            refreshUsers();
+        } catch (error) {
+            console.error("Failed to delete user:", error);
+            alert("An error occurred while deleting the user.");
+            setIsDeleteUserModalOpen(false);
+        } finally {
+            setIsDeletingUser(false);
+        }
     };
 
     return (
@@ -400,6 +442,13 @@ const UserManagement: React.FC<UserManagementProps> = ({ users, refreshUsers }) 
                                 </td>
                                 <td className="px-6 py-4 text-right space-x-4">
                                     <button onClick={() => setEditingUser(user)} className="font-medium text-primary hover:underline">Edit</button>
+                                    <button 
+                                        onClick={() => { setUserToDelete(user); setIsDeleteUserModalOpen(true); }} 
+                                        className="font-medium text-destructive hover:underline disabled:text-muted-foreground/50 disabled:no-underline"
+                                        disabled={currentUser?.id === user.id}
+                                    >
+                                        Delete
+                                    </button>
                                 </td>
                             </tr>
                         ))}
@@ -408,11 +457,46 @@ const UserManagement: React.FC<UserManagementProps> = ({ users, refreshUsers }) 
             </div>
             {isUserAddModalOpen && <UserFormModal onClose={() => setIsUserAddModalOpen(false)} onSave={handleSaveUser} />}
             {editingUser && <UserEditFormModal user={editingUser} onClose={() => setEditingUser(null)} onSave={handleSaveUser} />}
+            <DeleteConfirmationModal
+                isOpen={isDeleteUserModalOpen}
+                onClose={() => setIsDeleteUserModalOpen(false)}
+                onConfirm={handleConfirmUserDelete}
+                title="Confirm User Deletion"
+                description={`Are you sure you want to permanently delete the user "${userToDelete?.name || ''}"? This action is irreversible.`}
+                loading={isDeletingUser}
+            />
         </div>
     )
 };
 
 // --- MODALS ---
+interface DeleteConfirmationModalProps {
+    isOpen: boolean;
+    onClose: () => void;
+    onConfirm: () => void;
+    title: string;
+    description: string;
+    loading: boolean;
+}
+const DeleteConfirmationModal: React.FC<DeleteConfirmationModalProps> = ({ isOpen, onClose, onConfirm, title, description, loading }) => {
+    if (!isOpen) return null;
+
+    return (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 animate-fade-in">
+            <div className="bg-card border border-border rounded-xl shadow-2xl p-6 w-full max-w-md">
+                <h2 className="text-xl font-bold text-destructive">{title}</h2>
+                <p className="mt-2 text-muted-foreground whitespace-pre-wrap">{description}</p>
+                <div className="mt-6 flex justify-end space-x-3">
+                    <button onClick={onClose} disabled={loading} className={`${baseButtonClass} bg-secondary text-secondary-foreground hover:bg-secondary/80`}>Cancel</button>
+                    <button onClick={onConfirm} disabled={loading} className={`${baseButtonClass} bg-destructive text-destructive-foreground hover:bg-destructive/90`}>
+                        {loading ? 'Deleting...' : 'Confirm Delete'}
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
 interface UserFormModalProps {
     onClose: () => void;
     onSave: () => void;
@@ -421,7 +505,6 @@ interface UserFormModalProps {
 const UserFormModal: React.FC<UserFormModalProps> = ({ onClose, onSave, initialRole = 'agent' }) => {
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
     const [role, setRole] = useState<UserRole>(initialRole);
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
@@ -439,13 +522,14 @@ const UserFormModal: React.FC<UserFormModalProps> = ({ onClose, onSave, initialR
                 return;
             }
 
+            // FIX: Remove password from addUser call as it's not stored in Firestore
             await db.addUser({
                 name,
                 email,
-                password,
                 role,
                 status: role === 'agent' ? 'pending' : 'active',
             });
+            alert('User created. Please ask them to use the "Forgot Password" link on the login page to set their password.');
             onSave();
         } catch (err: any) {
             setError(err.message || 'Failed to create user.');
@@ -471,10 +555,8 @@ const UserFormModal: React.FC<UserFormModalProps> = ({ onClose, onSave, initialR
                             <label className="block text-sm font-medium text-foreground mb-1">Email</label>
                             <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className={baseInputClass} required />
                         </div>
-                        <div>
-                            <label className="block text-sm font-medium text-foreground mb-1">Password</label>
-                            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} className={baseInputClass} required />
-                        </div>
+                        {/* FIX: Remove password field as user is created without it and must use password reset */}
+                        <p className="text-xs text-muted-foreground p-2 bg-muted rounded-md">The user will be created without a password. They must use the "Forgot Password" feature on the login screen to set their own password.</p>
                         <div>
                             <label className="block text-sm font-medium text-foreground mb-1">Role</label>
                             <select value={role} onChange={(e) => setRole(e.target.value as UserRole)} className={baseInputClass}>
@@ -505,7 +587,6 @@ interface UserEditFormModalProps {
 const UserEditFormModal: React.FC<UserEditFormModalProps> = ({ user, onClose, onSave }) => {
     const [formData, setFormData] = useState({
         name: user.name,
-        password: '',
         role: user.role,
         status: user.status
     });
@@ -522,14 +603,13 @@ const UserEditFormModal: React.FC<UserEditFormModalProps> = ({ user, onClose, on
         setError('');
         setLoading(true);
         try {
+            // FIX: Omit password from update object
             const updates: Partial<User> = {
                 name: formData.name,
                 role: formData.role,
                 status: formData.status
             };
-            if (formData.password) {
-                updates.password = formData.password;
-            }
+            
             await db.updateUser(user.id, updates);
             onSave();
         } catch (err: any) {
@@ -556,10 +636,7 @@ const UserEditFormModal: React.FC<UserEditFormModalProps> = ({ user, onClose, on
                             <label className="block text-sm font-medium text-foreground mb-1">Full Name</label>
                             <input name="name" type="text" value={formData.name} onChange={handleChange} className={baseInputClass} required />
                         </div>
-                        <div>
-                            <label className="block text-sm font-medium text-foreground mb-1">New Password</label>
-                            <input name="password" type="password" value={formData.password} onChange={handleChange} className={baseInputClass} placeholder="Leave blank to keep current" />
-                        </div>
+                        {/* FIX: Remove password field */}
                         <div>
                             <label className="block text-sm font-medium text-foreground mb-1">Role</label>
                             <select name="role" value={formData.role} onChange={handleChange} className={baseInputClass}>
@@ -701,6 +778,7 @@ const PropertyFormModal: React.FC<PropertyFormModalProps> = ({ property, owners,
             Sleeps: ${formData.capacity} to ${formData.maxCapacity}, Key Amenities: ${formData.amenities.join(', ')}
             The description should be inviting and highlight the key features. Keep it under 60 words.`;
             
+            // FIX: Use correct model name as per guidelines
             const response = await ai.models.generateContent({model: 'gemini-2.5-flash', contents: prompt});
             setFormData(prev => ({...prev, description: response.text.trim() }));
 
@@ -876,7 +954,7 @@ const AdminDashboard: React.FC = () => {
     const [users, setUsers] = useState<User[]>([]);
     const [allAmenities, setAllAmenities] = useState<Amenity[]>([]);
     const [loading, setLoading] = useState(true);
-    const [view, setView] = useState<AdminView>('calendar');
+    const [view, setView] = useState<AdminView>('users');
     const { user } = useAuth();
     
     const fetchAllData = useCallback(async () => {

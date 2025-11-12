@@ -11,9 +11,10 @@
   "dependencies": {
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
-    "react-router-dom": "^7.9.5",
+    "react-router-dom": "^6.24.0",
     "@google/genai": "^0.14.0",
-    "firebase": "^12.5.0"
+    "firebase": "^12.5.0",
+    "@firebase/firestore-types": "^3.0.3"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",
