@@ -1,4 +1,5 @@
 
+
 import React, { useEffect } from 'react';
 // FIX: Use react-router-dom v6 imports (Routes, Navigate instead of Switch, Redirect)
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
@@ -36,7 +37,6 @@ const AppRoutes: React.FC = () => {
       // FIX: Use Routes instead of Switch, and element prop instead of component
       <Routes>
         <Route path="/login" element={<LoginPage />} />
-        <Route path="/signup" element={<SignupPage />} />
         <Route path="*" element={<Navigate to="/login" />} />
       </Routes>
     );

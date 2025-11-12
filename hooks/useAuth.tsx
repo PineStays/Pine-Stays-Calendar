@@ -14,6 +14,8 @@ interface AuthContextType {
   signup: (name: string, email: string, password: string) => Promise<void>;
   logout: () => void;
   updateUserInContext: (updates: Partial<User>) => void;
+  signInWithGoogle: () => Promise<void>;
+  sendPasswordReset: (email: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -131,6 +133,54 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     // where the listener might fire before the Firestore document is created.
     setUser({ id: firebaseUser.uid, ...newUser } as User);
   };
+  
+  const signInWithGoogle = async (): Promise<void> => {
+    if (!['http:', 'https:'].includes(window.location.protocol)) {
+      throw new Error("Google Sign-In is not supported in this environment.");
+    }
+
+    const provider = new firebase.auth.GoogleAuthProvider();
+    const userCredential = await auth.signInWithPopup(provider);
+    const firebaseUser = userCredential.user;
+
+    if (!firebaseUser) {
+      throw new Error("Could not sign in with Google.");
+    }
+
+    // Check if user exists in Firestore, if not, create them
+    const userDocRef = db_firebase.collection('users').doc(firebaseUser.uid);
+    const userDoc = await userDocRef.get();
+
+    if (!userDoc.exists) {
+      console.log("New user via Google Sign-In. Creating Firestore profile...");
+      const usersRef = db_firebase.collection('users');
+      const snapshot = await usersRef.limit(1).get();
+      
+      let role: UserRole = 'agent';
+      let status: UserStatus = 'pending';
+
+      if (snapshot.empty) {
+        console.log("First user signing up via Google. Assigning admin role.");
+        role = 'admin';
+        status = 'active';
+      }
+
+      const newUser: Omit<User, 'id'> = {
+        name: firebaseUser.displayName || 'Google User',
+        email: firebaseUser.email!,
+        role,
+        status,
+      };
+
+      await db_firebase.collection('users').doc(firebaseUser.uid).set(newUser);
+      setUser({ id: firebaseUser.uid, ...newUser } as User);
+    }
+    // If user already exists, onAuthStateChanged will handle setting the state.
+  };
+  
+  const sendPasswordReset = async (email: string): Promise<void> => {
+      await auth.sendPasswordResetEmail(email);
+  };
 
   const logout = async () => {
     // FIX: Use v8 signOut method
@@ -148,7 +198,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, signup, logout, updateUserInContext }}>
+    <AuthContext.Provider value={{ user, loading, login, signup, logout, updateUserInContext, signInWithGoogle, sendPasswordReset }}>
       {children}
     </AuthContext.Provider>
   );
