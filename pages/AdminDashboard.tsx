@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { GoogleGenAI } from '@google/genai';
 import { Property, CalendarEntry, CalendarStatus, Amenity, User, UserRole, UserStatus } from '../types';
@@ -116,7 +117,7 @@ const MemoizedCalendarCell = React.memo<{
             <div className="p-1 font-medium text-xs sm:text-sm">
                 {price > 0 ? `₹${price.toLocaleString('en-IN', { maximumFractionDigits: 0 })}` : <span className="capitalize text-xs">{statusText}</span>}
             </div>
-            {entry?.notes && <span className="absolute top-1 right-1 w-2 h-2 bg-blue-500 rounded-full"></span>}
+            {entry?.notes && <span className="absolute top-1 right-1 w-2 h-2 bg-primary rounded-full"></span>}
         </td>
     );
 });
@@ -128,13 +129,19 @@ interface CalendarManagementProps {
     refreshAllData: () => void;
 }
 const CalendarManagement: React.FC<CalendarManagementProps> = ({ properties, refreshAllData }) => {
-    const [startDate, setStartDate] = useState(new Date());
+    const [startDate, setStartDate] = useState(new Date(new Date().getFullYear(), new Date().getMonth(), 1));
     const [calendarEntries, setCalendarEntries] = useState<CalendarEntry[]>([]);
     const [loading, setLoading] = useState(true);
     const [selectedCells, setSelectedCells] = useState<{ propertyId: string; date: string }[]>([]);
     const [activeNote, setActiveNote] = useState<{ propertyName: string; date: string; content: string } | null>(null);
+    const [searchTerm, setSearchTerm] = useState('');
     
-    const dates = useMemo(() => getDatesInRange(startDate, 30), [startDate]);
+    const dates = useMemo(() => {
+        const year = startDate.getFullYear();
+        const month = startDate.getMonth();
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+        return getDatesInRange(startDate, daysInMonth);
+    }, [startDate]);
 
     const fetchCalendarData = useCallback(async () => {
         setLoading(true);
@@ -153,7 +160,11 @@ const CalendarManagement: React.FC<CalendarManagementProps> = ({ properties, ref
         fetchCalendarData();
     }, [fetchCalendarData]);
     
-    const activeProperties = useMemo(() => properties.filter(p => p.status === 'active'), [properties]);
+    const activeProperties = useMemo(() => {
+      return properties
+        .filter(p => p.status === 'active')
+        .filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()));
+    }, [properties, searchTerm]);
 
     const calendarData = useMemo(() => {
         const map = new Map<string, CalendarEntry>();
@@ -204,7 +215,18 @@ const CalendarManagement: React.FC<CalendarManagementProps> = ({ properties, ref
         <div className="space-y-8">
             <div className="bg-card p-4 sm:p-6 rounded-xl shadow-lg border border-border">
                 <div className="flex flex-col sm:flex-row justify-between sm:items-center mb-4 gap-4">
-                     <h2 className="text-xl font-bold text-foreground">Availability Calendar</h2>
+                     <div className="flex-grow">
+                        <h2 className="text-xl font-bold text-foreground">Availability Calendar</h2>
+                     </div>
+                     <div className="w-full sm:w-auto sm:max-w-xs">
+                        <input
+                            type="text"
+                            placeholder="Search property..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className={baseInputClass}
+                        />
+                     </div>
                       <div className="flex items-center space-x-1 self-end sm:self-center">
                         <button onClick={() => setStartDate(d => new Date(d.getFullYear(), d.getMonth() - 1, 1))} className="p-2.5 rounded-md hover:bg-muted text-muted-foreground">&lt;</button>
                         <span className="font-semibold text-foreground text-base sm:text-lg w-36 text-center">{startDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric'})}</span>
@@ -344,7 +366,7 @@ const PropertyManagement: React.FC<PropertyManagementProps> = ({ properties, use
                                     <td className="px-6 py-4 hidden md:table-cell">{prop.location}</td>
                                     <td className="px-6 py-4 hidden lg:table-cell">{owner?.name || 'Unassigned'}</td>
                                     <td className="px-6 py-4">
-                                        <span className={`px-2 py-1 rounded-full text-xs font-semibold ${prop.status === 'active' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'}`}>
+                                        <span className={`px-2 py-1 rounded-full text-xs font-semibold ${prop.status === 'active' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400'}`}>
                                             {prop.status}
                                         </span>
                                     </td>
@@ -435,7 +457,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ users, refreshUsers }) 
                                 <td className="px-6 py-4">
                                      <span className={`px-2 py-1 rounded-full text-xs font-semibold capitalize ${
                                         user.status === 'active' ? 'bg-emerald-500/10 text-emerald-400' : 
-                                        user.status === 'pending' ? 'bg-amber-500/10 text-amber-400' : 'bg-rose-500/10 text-rose-400'
+                                        user.status === 'pending' ? 'bg-amber-500/10 text-amber-400' : 'bg-red-500/10 text-red-400'
                                      }`}>
                                         {user.status}
                                     </span>
@@ -954,7 +976,7 @@ const AdminDashboard: React.FC = () => {
     const [users, setUsers] = useState<User[]>([]);
     const [allAmenities, setAllAmenities] = useState<Amenity[]>([]);
     const [loading, setLoading] = useState(true);
-    const [view, setView] = useState<AdminView>('users');
+    const [view, setView] = useState<AdminView>('calendar');
     const { user } = useAuth();
     
     const fetchAllData = useCallback(async () => {

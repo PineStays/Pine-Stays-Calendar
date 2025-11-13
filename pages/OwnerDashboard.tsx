@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Property, CalendarEntry } from '../types';
 import { db } from '../services/databaseService';
@@ -118,12 +119,17 @@ const OwnerDashboard: React.FC = () => {
     const [properties, setProperties] = useState<Property[]>([]);
     const [calendarEntries, setCalendarEntries] = useState<CalendarEntry[]>([]);
     const [loading, setLoading] = useState(true);
-    const [startDate, setStartDate] = useState(new Date());
+    const [startDate, setStartDate] = useState(new Date(new Date().getFullYear(), new Date().getMonth(), 1));
     const [editingCell, setEditingCell] = useState<{ property: Property; date: string; entry?: CalendarEntry } | null>(null);
     const [viewingNote, setViewingNote] = useState<{ property: Property; date: string; entry: CalendarEntry } | null>(null);
     const { user } = useAuth();
     
-    const dates = useMemo(() => getDatesInRange(startDate, 30), [startDate]);
+    const dates = useMemo(() => {
+        const year = startDate.getFullYear();
+        const month = startDate.getMonth();
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+        return getDatesInRange(startDate, daysInMonth);
+    }, [startDate]);
 
     const fetchOwnerData = useCallback(async () => {
         if (!user) return;
@@ -222,7 +228,7 @@ const OwnerDashboard: React.FC = () => {
                                                     >
                                                         <div className="p-1 font-medium relative text-xs sm:text-sm">
                                                             {price > 0 ? `₹${price.toLocaleString('en-IN', {maximumFractionDigits: 0})}` : <span className="capitalize text-xs">{statusText}</span>}
-                                                            {entry?.notes && <span className="absolute top-0.5 right-0.5 w-2 h-2 bg-blue-500 rounded-full"></span>}
+                                                            {entry?.notes && <span className="absolute top-0.5 right-0.5 w-2 h-2 bg-primary rounded-full"></span>}
                                                         </div>
                                                     </td>
                                                 );

@@ -7,8 +7,8 @@ export const LOCATIONS: Location[] = ['Lonavala', 'Mumbai', 'Pune', 'Goa', 'Alib
 export const STATUSES: CalendarStatus[] = ['available', 'booked', 'blocked', 'owner'];
 
 export const STATUS_COLORS: { [key in CalendarStatus]: { bg: string; text: string; border: string } } = {
-  available: { bg: 'bg-emerald-500/10', text: 'text-emerald-400', border: 'border-emerald-500/20' },
-  booked: { bg: 'bg-rose-500/10', text: 'text-rose-400', border: 'border-rose-500/20' },
+  available: { bg: 'bg-teal-500/10', text: 'text-teal-400', border: 'border-teal-500/20' },
+  booked: { bg: 'bg-red-500/10', text: 'text-red-400', border: 'border-red-500/20' },
   blocked: { bg: 'bg-slate-500/10', text: 'text-slate-400', border: 'border-slate-500/20' },
-  owner: { bg: 'bg-fuchsia-500/10', text: 'text-fuchsia-400', border: 'border-fuchsia-500/20' },
+  owner: { bg: 'bg-violet-500/10', text: 'text-violet-400', border: 'border-violet-500/20' },
 };

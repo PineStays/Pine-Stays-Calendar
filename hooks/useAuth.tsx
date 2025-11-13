@@ -59,8 +59,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         await auth.signInWithEmailAndPassword(email, password);
         // If successful, onAuthStateChanged will handle the rest.
       } catch (error: any) {
-        // If the user does not exist, create them as an admin.
-        if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential') {
+        if (error.code === 'auth/user-not-found') {
+          // If the user does not exist, create them as an admin.
           console.log("Admin user not found. Attempting to create a new admin account...");
           try {
             const userCredential = await auth.createUserWithEmailAndPassword(email, password);
@@ -80,12 +80,20 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             // Manually set the user state to complete the login process immediately.
             setUser({ id: firebaseUser.uid, ...adminUser } as User);
             return; // Exit here to prevent onAuthStateChanged race condition
-          } catch (creationError) {
+          } catch (creationError: any) {
+             if (creationError.code === 'auth/email-already-in-use') {
+                 console.error("Admin user exists in Auth but login failed. Possible password mismatch or social sign-in.", creationError);
+                 throw new Error("An admin account exists but the password is incorrect. Please use the 'Forgot Password' link to reset it.");
+            }
             console.error("Failed to create the hardcoded admin user:", creationError);
             throw new Error("Failed to create the initial admin user. Please check your Firebase rules or logs.");
           }
+        } else if (error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password') {
+            // If the user exists but the password is wrong.
+            throw new Error("The admin account exists, but the password provided is incorrect. Please use the 'Forgot Password' feature.");
         }
-        // If it's another type of error (e.g., wrong password for an existing admin), re-throw it.
+        
+        // If it's another type of error, re-throw it.
         throw error;
       }
     } else {

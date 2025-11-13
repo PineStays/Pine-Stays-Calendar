@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Property, CalendarEntry, CalendarStatus, Location, PropertyType, Amenity } from '../types';
 import { db } from '../services/databaseService';
@@ -164,10 +165,87 @@ const MemoizedCalendarCell = React.memo<{
             <div className="p-1 font-medium text-xs sm:text-sm">
                 {price > 0 ? `₹${price.toLocaleString('en-IN', { maximumFractionDigits: 0 })}` : <span className="capitalize text-xs">{status === 'owner' ? 'Booked O' : status}</span>}
             </div>
-            {entry?.notes && <span className="absolute top-1 right-1 w-2 h-2 bg-blue-500 rounded-full" title={entry.notes}></span>}
+            {entry?.notes && <span className="absolute top-1 right-1 w-2 h-2 bg-primary rounded-full" title={entry.notes}></span>}
         </td>
     );
 });
+
+// --- FILTER SIDEBAR ---
+interface FilterSidebarProps {
+    isOpen: boolean;
+    onClose: () => void;
+    filters: any;
+    setFilters: (filters: any) => void;
+    allAmenities: Amenity[];
+    properties: Property[];
+}
+const FilterSidebar: React.FC<FilterSidebarProps> = ({ isOpen, onClose, filters, setFilters, allAmenities, properties }) => {
+    
+    const handleFilterChange = (key: string, value: any) => {
+        setFilters({ ...filters, [key]: value });
+    };
+
+    const handleAmenityChange = (amenity: string) => {
+        const currentAmenities = filters.amenities || [];
+        const newAmenities = currentAmenities.includes(amenity)
+            ? currentAmenities.filter((a: string) => a !== amenity)
+            : [...currentAmenities, amenity];
+        handleFilterChange('amenities', newAmenities);
+    };
+
+    const resetFilters = () => {
+        setFilters({ location: 'all', type: 'all', amenities: [], minCapacity: 0 });
+    };
+    
+    return (
+        <>
+          <div 
+              className={`fixed inset-0 bg-black/50 z-40 transition-opacity ${isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+              onClick={onClose}
+          />
+          <div className={`fixed top-0 left-0 bottom-0 w-80 bg-card border-r border-border shadow-2xl z-50 p-6 flex flex-col transform transition-transform ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+              <div className="flex justify-between items-center mb-6">
+                  <h2 className="text-xl font-bold text-foreground">Filters</h2>
+                  <button onClick={onClose} className="p-2 -m-2 rounded-full hover:bg-muted"><XMarkIcon className="w-6 h-6"/></button>
+              </div>
+              <div className="flex-grow overflow-y-auto space-y-6 pr-2">
+                  <div>
+                      <label className="block text-sm font-semibold text-foreground mb-2">Location</label>
+                      <select value={filters.location} onChange={e => handleFilterChange('location', e.target.value)} className={baseInputClass}>
+                          <option value="all">All Locations</option>
+                          {LOCATIONS.map(loc => <option key={loc} value={loc}>{loc}</option>)}
+                      </select>
+                  </div>
+                  <div>
+                      <label className="block text-sm font-semibold text-foreground mb-2">Property Type</label>
+                      <select value={filters.type} onChange={e => handleFilterChange('type', e.target.value)} className={baseInputClass}>
+                          <option value="all">All Types</option>
+                          {PROPERTY_TYPES.map(type => <option key={type} value={type}>{type}</option>)}
+                      </select>
+                  </div>
+                  <div>
+                      <label className="block text-sm font-semibold text-foreground mb-2">Minimum Guests</label>
+                      <input type="number" value={filters.minCapacity} onChange={e => handleFilterChange('minCapacity', Number(e.target.value))} className={baseInputClass} placeholder="e.g. 8" />
+                  </div>
+                  <div>
+                      <label className="block text-sm font-semibold text-foreground mb-2">Amenities</label>
+                      <div className="space-y-2 max-h-60 overflow-y-auto p-1">
+                          {allAmenities.map(amenity => (
+                              <label key={amenity} className="flex items-center space-x-2">
+                                  <input type="checkbox" checked={filters.amenities.includes(amenity)} onChange={() => handleAmenityChange(amenity)} className="rounded text-primary focus:ring-ring" />
+                                  <span className="text-sm text-foreground">{amenity}</span>
+                              </label>
+                          ))}
+                      </div>
+                  </div>
+              </div>
+              <div className="pt-6 border-t border-border">
+                  <button onClick={resetFilters} className={`${baseButtonClass} w-full bg-secondary text-secondary-foreground hover:bg-secondary/80`}>Reset Filters</button>
+              </div>
+          </div>
+        </>
+    );
+};
 
 // --- MAIN PORTAL ---
 const AgentPortal: React.FC = () => {
@@ -175,7 +253,7 @@ const AgentPortal: React.FC = () => {
     const [allAmenities, setAllAmenities] = useState<Amenity[]>([]);
     const [calendarEntries, setCalendarEntries] = useState<CalendarEntry[]>([]);
     const [loading, setLoading] = useState(true);
-    const [startDate, setStartDate] = useState(new Date());
+    const [startDate, setStartDate] = useState(new Date(new Date().getFullYear(), new Date().getMonth(), 1));
     const [selectedCells, setSelectedCells] = useState<{ propertyId: string; date: string }[]>([]);
     const [isFilterOpen, setIsFilterOpen] = useState(false);
     const [filters, setFilters] = useState({
@@ -186,7 +264,12 @@ const AgentPortal: React.FC = () => {
     });
     const { user } = useAuth();
     
-    const dates = useMemo(() => getDatesInRange(startDate, 30), [startDate]);
+    const dates = useMemo(() => {
+        const year = startDate.getFullYear();
+        const month = startDate.getMonth();
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+        return getDatesInRange(startDate, daysInMonth);
+    }, [startDate]);
 
     const fetchData = useCallback(async () => {
         setLoading(true);
@@ -240,6 +323,15 @@ const AgentPortal: React.FC = () => {
             setSelectedCells(prev => [...prev, { propertyId, date }]);
         }
     }, [selectedCells]);
+    
+    const activeFilterCount = useMemo(() => {
+      let count = 0;
+      if (filters.location !== 'all') count++;
+      if (filters.type !== 'all') count++;
+      if (filters.minCapacity > 0) count++;
+      count += filters.amenities.length;
+      return count;
+    }, [filters]);
 
     return (
         <div className="bg-muted/40 dark:bg-background min-h-screen">
@@ -248,7 +340,7 @@ const AgentPortal: React.FC = () => {
                 subtitle={`Welcome, ${user?.name}`}
             >
               <button onClick={() => setIsFilterOpen(true)} className={`${baseButtonClass} bg-secondary text-secondary-foreground hover:bg-secondary/80 flex items-center gap-2`}>
-                <FunnelIcon className="w-4 h-4" /> Filter
+                <FunnelIcon className="w-4 h-4" /> Filter {activeFilterCount > 0 && <span className="bg-primary text-primary-foreground text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">{activeFilterCount}</span>}
               </button>
             </Header>
 
@@ -262,6 +354,18 @@ const AgentPortal: React.FC = () => {
                             <button onClick={() => setStartDate(d => new Date(d.getFullYear(), d.getMonth() + 1, 1))} className="p-2.5 rounded-md hover:bg-muted text-muted-foreground">&gt;</button>
                          </div>
                     </div>
+                    {activeFilterCount > 0 && (
+                      <div className="flex items-center gap-2 mb-4 p-3 bg-muted rounded-lg">
+                        <span className="text-sm font-semibold text-foreground">Active Filters:</span>
+                        <div className="flex flex-wrap gap-2">
+                           {filters.location !== 'all' && <span className="bg-primary/10 text-primary text-xs font-bold px-2 py-1 rounded-full">{filters.location}</span>}
+                           {filters.type !== 'all' && <span className="bg-primary/10 text-primary text-xs font-bold px-2 py-1 rounded-full">{filters.type}</span>}
+                           {filters.minCapacity > 0 && <span className="bg-primary/10 text-primary text-xs font-bold px-2 py-1 rounded-full">Guests: {filters.minCapacity}+</span>}
+                           {filters.amenities.map(a => <span key={a} className="bg-primary/10 text-primary text-xs font-bold px-2 py-1 rounded-full">{a}</span>)}
+                        </div>
+                        <button onClick={() => setFilters({ location: 'all', type: 'all', amenities: [], minCapacity: 0 })} className="ml-auto text-sm font-semibold text-primary hover:underline">Clear</button>
+                      </div>
+                    )}
                     <div className="overflow-x-auto relative custom-scrollbar">
                         <table className="w-full border-collapse">
                             <thead>
@@ -306,6 +410,7 @@ const AgentPortal: React.FC = () => {
                 </div>
             </main>
             <QuoteBuilder selectedCells={selectedCells} properties={properties} calendarData={calendarData} onClear={() => setSelectedCells([])} />
+            <FilterSidebar isOpen={isFilterOpen} onClose={() => setIsFilterOpen(false)} filters={filters} setFilters={setFilters} allAmenities={allAmenities} properties={properties} />
         </div>
     );
 };

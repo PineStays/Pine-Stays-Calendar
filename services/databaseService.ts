@@ -1,3 +1,4 @@
+
 import { Property, CalendarEntry, CalendarStatus, User, Amenity } from '../types';
 import { INITIAL_AMENITIES } from '../constants';
 // FIX: Use v8 compat version of firebase and db from firebase service
@@ -234,17 +235,23 @@ class DatabaseService {
     
     // Fetch all required properties and existing entries in advance to minimize reads
     const propertyIds = [...new Set(cells.map(c => c.propertyId))];
-    // FIX: Use v8 firestore syntax
-    // FIX: Use correct QuerySnapshot type from firebase v8 compat module to avoid type mismatch in ternary operator, which was causing `any` type inference.
-    const propertiesSnapshot = propertyIds.length > 0 ? await db_firebase.collection('properties').where(firebase.firestore.FieldPath.documentId(), 'in', propertyIds).get() : ({ docs: [] } as unknown as firebase.firestore.QuerySnapshot);
-    const properties = propertiesSnapshot.docs.map(doc => docToData<Property>(doc));
+    
+    // FIX: Refactored to avoid ternary with type cast which was causing type inference issues.
+    let properties: Property[] = [];
+    if (propertyIds.length > 0) {
+        const propertiesSnapshot = await db_firebase.collection('properties').where(firebase.firestore.FieldPath.documentId(), 'in', propertyIds).get();
+        properties = propertiesSnapshot.docs.map(doc => docToData<Property>(doc));
+    }
     const propMap = new Map(properties.map(p => [p.id, p]));
 
     const entryIds = cells.map(c => `${c.propertyId}_${c.date}`);
-    // FIX: Use v8 firestore syntax
-    // FIX: Use correct QuerySnapshot type from firebase v8 compat module to avoid type mismatch in ternary operator, which was causing `any` type inference.
-    const entriesSnapshot = entryIds.length > 0 ? await db_firebase.collection('calendarEntries').where(firebase.firestore.FieldPath.documentId(), 'in', entryIds).get() : ({ docs: [] } as unknown as firebase.firestore.QuerySnapshot);
-    const entryMap = new Map<string, CalendarEntry>(entriesSnapshot.docs.map(doc => [doc.id, docToData<CalendarEntry>(doc)]));
+    
+    // FIX: Refactored to avoid ternary with type cast which was causing type inference issues.
+    let entryMap = new Map<string, CalendarEntry>();
+    if (entryIds.length > 0) {
+        const entriesSnapshot = await db_firebase.collection('calendarEntries').where(firebase.firestore.FieldPath.documentId(), 'in', entryIds).get();
+        entryMap = new Map<string, CalendarEntry>(entriesSnapshot.docs.map(doc => [doc.id, docToData<CalendarEntry>(doc)]));
+    }
 
     let updatedCount = 0;
     for (const cell of cells) {
