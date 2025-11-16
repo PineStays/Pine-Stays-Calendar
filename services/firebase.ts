@@ -1,5 +1,4 @@
-
-// FIX: Update Firebase imports to use v8 compatibility mode
+// FIX: Use v8 compatibility with proper Analytics support detection
 import firebase from "firebase/compat/app";
 import "firebase/compat/analytics";
 import "firebase/compat/firestore";
@@ -16,13 +15,19 @@ const firebaseConfig = {
   measurementId: "G-EG4CV8B7NE"
 };
 
+// Initialize Firebase app
+const app = !firebase.apps.length ? firebase.initializeApp(firebaseConfig) : firebase.app();
 
-// FIX: Update Firebase initialization to use v8 compatibility mode
-const app = firebase.initializeApp(firebaseConfig);
-if (firebase.analytics.isSupported()) {
-  firebase.analytics(app);
+// FIX: Prevent analytics crash in SSR or unsupported environments
+if (typeof window !== "undefined" && firebase.analytics.isSupported && typeof firebase.analytics.isSupported === "function") {
+  firebase.analytics.isSupported().then((supported) => {
+    if (supported) {
+      firebase.analytics();
+    }
+  });
 }
 
+// Export authentication and firestore for use in your app
 export const auth = firebase.auth();
 export const db_firebase = firebase.firestore();
 export { firebase, firebaseConfig };

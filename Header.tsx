@@ -32,19 +32,24 @@ const XMarkIcon = (props: React.SVGProps<SVGSVGElement>) => (
 // --- THEME TOGGLE ---
 export const ThemeToggle: React.FC = () => {
     const { theme, setTheme } = useTheme();
-    
+
+    const cycleTheme = () => {
+        const themes: ('light' | 'dark' | 'system')[] = ['light', 'dark', 'system'];
+        const currentIndex = themes.indexOf(theme);
+        const nextIndex = (currentIndex + 1) % themes.length;
+        setTheme(themes[nextIndex]);
+    };
+
     return (
-        <div className="flex items-center p-1 bg-secondary rounded-lg">
-            <button onClick={() => setTheme('light')} className={`p-1.5 rounded-md transition-colors ${theme === 'light' ? 'bg-card text-primary shadow' : 'text-muted-foreground hover:text-foreground'}`} aria-label="Light mode">
-                <SunIcon className="w-5 h-5" />
-            </button>
-            <button onClick={() => setTheme('dark')} className={`p-1.5 rounded-md transition-colors ${theme === 'dark' ? 'bg-card text-primary shadow' : 'text-muted-foreground hover:text-foreground'}`} aria-label="Dark mode">
-                <MoonIcon className="w-5 h-5" />
-            </button>
-             <button onClick={() => setTheme('system')} className={`p-1.5 rounded-md transition-colors ${theme === 'system' ? 'bg-card text-primary shadow' : 'text-muted-foreground hover:text-foreground'}`} aria-label="System mode">
-                <ComputerDesktopIcon className="w-5 h-5" />
-            </button>
-        </div>
+        <button
+            onClick={cycleTheme}
+            className="flex items-center justify-center p-2.5 rounded-lg bg-secondary text-muted-foreground hover:text-foreground transition-colors"
+            aria-label={`Toggle theme (current: ${theme})`}
+        >
+            {theme === 'light' && <SunIcon className="w-5 h-5" />}
+            {theme === 'dark' && <MoonIcon className="w-5 h-5" />}
+            {theme === 'system' && <ComputerDesktopIcon className="w-5 h-5" />}
+        </button>
     );
 };
 

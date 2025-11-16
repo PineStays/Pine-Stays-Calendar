@@ -1,6 +1,6 @@
 export type Amenity = string;
 
-export type PropertyType = '3-BHK' | '4-BHK' | '5-BHK' | 'Villa' | 'Cottage' | 'Penthouse';
+export type PropertyType = 'Apartments' | 'Villas' | 'Hostel' | 'Hotel';
 
 export type Location = 'Lonavala' | 'Mumbai' | 'Pune' | 'Goa' | 'Alibaug';
 

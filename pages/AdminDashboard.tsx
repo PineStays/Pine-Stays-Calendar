@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { GoogleGenAI } from '@google/genai';
 import { Property, CalendarEntry, CalendarStatus, Amenity, User, UserRole, UserStatus } from '../types';
@@ -407,6 +408,14 @@ const UserManagement: React.FC<UserManagementProps> = ({ users, refreshUsers }) 
     const [isDeleteUserModalOpen, setIsDeleteUserModalOpen] = useState(false);
     const [userToDelete, setUserToDelete] = useState<User | null>(null);
     const [isDeletingUser, setIsDeletingUser] = useState(false);
+    const [searchTerm, setSearchTerm] = useState('');
+
+    const filteredUsers = useMemo(() => {
+        return users.filter(user =>
+            user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            user.email.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+    }, [users, searchTerm]);
 
     const handleSaveUser = () => {
         setIsUserAddModalOpen(false);
@@ -435,7 +444,16 @@ const UserManagement: React.FC<UserManagementProps> = ({ users, refreshUsers }) 
         <div className="bg-card p-4 sm:p-6 rounded-xl shadow-lg border border-border">
              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">
                 <h2 className="text-xl font-bold text-foreground">Manage Users</h2>
-                <button onClick={() => setIsUserAddModalOpen(true)} className={`${baseButtonClass} bg-primary text-primary-foreground hover:bg-primary/90`}>Add User</button>
+                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center space-y-2 sm:space-y-0 sm:space-x-4 w-full sm:w-auto">
+                    <input
+                        type="text"
+                        placeholder="Search user..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className={`${baseInputClass} w-full sm:w-auto`}
+                    />
+                    <button onClick={() => setIsUserAddModalOpen(true)} className={`flex-shrink-0 ${baseButtonClass} bg-primary text-primary-foreground hover:bg-primary/90`}>Add User</button>
+                </div>
             </div>
             <div className="overflow-x-auto custom-scrollbar">
                 <table className="w-full text-sm text-left text-muted-foreground">
@@ -449,7 +467,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ users, refreshUsers }) 
                         </tr>
                     </thead>
                     <tbody>
-                        {users.map(user => (
+                        {filteredUsers.map(user => (
                             <tr key={user.id} className="bg-card border-b border-border hover:bg-muted/50">
                                 <td className="px-6 py-4 font-medium text-foreground whitespace-nowrap">{user.name}</td>
                                 <td className="px-6 py-4 hidden md:table-cell">{user.email}</td>
@@ -750,7 +768,7 @@ interface PropertyFormModalProps {
 }
 const PropertyFormModal: React.FC<PropertyFormModalProps> = ({ property, owners, allAmenities, onClose, onSave, refreshParentData }) => {
     const [formData, setFormData] = useState<Omit<Property, 'id'>>({
-        name: '', type: 'Villa', location: 'Lonavala', capacity: 8, basePrice: 20000,
+        name: '', type: 'Villas', location: 'Lonavala', capacity: 8, basePrice: 20000,
         photoLink: '', pdfLink: '', amenities: [], description: '', status: 'active',
         propertyCode: '', bedrooms: 3, bathrooms: 3, area: '', maxCapacity: 10,
         poolType: 'none', videoLink: '', extraGuestCost: 0, houseRules: '', menuCardLink: '', ownerId: '',
