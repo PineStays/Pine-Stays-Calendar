@@ -43,7 +43,7 @@ export const ThemeToggle: React.FC = () => {
     return (
         <button
             onClick={cycleTheme}
-            className="flex items-center justify-center p-2.5 rounded-lg bg-secondary text-muted-foreground hover:text-foreground transition-colors"
+            className="flex items-center justify-center p-3 rounded-xl bg-secondary/50 text-muted-foreground hover:text-foreground transition-colors"
             aria-label={`Toggle theme (current: ${theme})`}
         >
             {theme === 'light' && <SunIcon className="w-5 h-5" />}
@@ -100,10 +100,10 @@ export const Header: React.FC<HeaderProps> = ({ title, subtitle, navItems = [], 
 
     return (
         <>
-            <header className="bg-card/80 backdrop-blur-lg sticky top-0 z-30 border-b border-border">
+            <header className="bg-card/60 backdrop-blur-xl sticky top-0 z-30 border-b border-border/50">
                 <div className="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8">
                     <div className="flex justify-between items-center h-20">
-                        <div className="flex items-center gap-x-2">
+                        <div className="flex items-center gap-x-2 flex-1 min-w-0">
                             {navItems.length > 0 && (
                                 <div className="md:hidden">
                                     <button onClick={() => setIsMenuOpen(true)} className="p-2.5 -m-2.5 rounded-lg text-muted-foreground hover:bg-muted">
@@ -111,8 +111,8 @@ export const Header: React.FC<HeaderProps> = ({ title, subtitle, navItems = [], 
                                     </button>
                                 </div>
                             )}
-                            <div>
-                                <h1 className="text-xl sm:text-2xl font-bold text-foreground leading-tight">{title}</h1>
+                            <div className="min-w-0">
+                                <h1 className="text-xl sm:text-2xl font-bold text-foreground leading-tight truncate">{title}</h1>
                                 <p className="text-xs sm:text-sm text-muted-foreground">{subtitle}</p>
                             </div>
                         </div>
@@ -124,7 +124,7 @@ export const Header: React.FC<HeaderProps> = ({ title, subtitle, navItems = [], 
                         <div className="flex items-center gap-x-2 sm:gap-x-3">
                             <div className="hidden sm:flex items-center gap-x-2 sm:gap-x-4">{children}</div>
                             <ThemeToggle />
-                            <button onClick={logout} className="px-3 py-2 bg-destructive/10 text-destructive text-sm font-semibold rounded-lg hover:bg-destructive/20 transition-colors">
+                            <button onClick={logout} className="px-4 py-3 bg-destructive/10 text-destructive text-sm font-semibold rounded-xl hover:bg-destructive/20 transition-colors">
                                Logout
                             </button>
                         </div>
@@ -137,9 +137,9 @@ export const Header: React.FC<HeaderProps> = ({ title, subtitle, navItems = [], 
                 className={`fixed inset-0 z-40 transition-opacity duration-300 ${isMenuOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
                 onClick={() => setIsMenuOpen(false)}
             >
-                <div className="absolute inset-0 bg-black/50" />
+                <div className="absolute inset-0 bg-black/60" />
             </div>
-            <div className={`fixed inset-y-0 left-0 w-4/5 max-w-sm bg-card z-50 p-6 flex flex-col transition-transform duration-300 ease-in-out ${isMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+            <div className={`fixed inset-y-0 left-0 w-4/5 max-w-sm bg-card/80 backdrop-blur-2xl border-r border-border/50 z-50 p-6 flex flex-col transition-transform duration-300 ease-in-out ${isMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
                  <div className="flex justify-between items-center mb-8">
                      <h2 className="text-2xl font-bold text-primary">Pine Stays</h2>
                      <button onClick={() => setIsMenuOpen(false)} className="p-2 -m-2 rounded-full text-muted-foreground hover:bg-muted">
@@ -151,7 +151,7 @@ export const Header: React.FC<HeaderProps> = ({ title, subtitle, navItems = [], 
                     {navItems.map(item => <NavLink key={item.id} item={item} isMobile />)}
                 </nav>
                 
-                <div className="pt-6 border-t border-border">
+                <div className="pt-6 border-t border-border/50">
                     <div className="flex flex-col gap-4 items-center">{children}</div>
                 </div>
             </div>

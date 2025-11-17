@@ -112,7 +112,8 @@ const LoginPage: React.FC = () => {
     try {
       await auth.signInWithGoogle();
       navigate('/');
-    } catch (err: any) {
+    } catch (err: any)
+       {
       setError(err.message || 'Failed to sign in with Google.');
     } finally {
       setLoading(false);
@@ -134,36 +135,32 @@ const LoginPage: React.FC = () => {
       }
   };
 
-  // FIX: Define inputClass and buttonClass constants for consistent styling
-  const inputClass = "w-full border border-input rounded-lg shadow-sm px-3 py-2.5 text-sm leading-snug bg-background text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring";
-  const buttonClass = `w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-primary-foreground bg-primary hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-ring transition duration-150 ease-in-out ${loading ? 'opacity-60 cursor-not-allowed' : ''}`;
+  const inputClass = "w-full border border-input rounded-xl shadow-sm px-4 py-3 text-base bg-input/50 text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring";
+  const buttonClass = `w-full flex justify-center py-3 px-4 border border-transparent rounded-xl shadow-sm text-base font-semibold text-primary-foreground bg-primary hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-ring transition duration-150 ease-in-out ${loading ? 'opacity-60 cursor-not-allowed' : ''}`;
 
   const renderContent = () => {
     switch (view) {
       case 'signup':
         return (
           <>
-            <h2 className="text-2xl font-bold text-center text-foreground">Create Account</h2>
+            <h2 className="text-3xl font-bold text-center text-foreground">Create Account</h2>
             {isFirstUser === true && (
-                <div className="bg-primary/10 border-l-4 border-primary text-primary p-4 my-4 rounded-r-lg text-sm" role="alert">
+                <div className="bg-primary/10 border-l-4 border-primary text-primary-foreground/90 p-4 my-4 rounded-r-lg text-sm" role="alert">
                   <p className="font-bold">Administrator Account Setup</p>
                   <p>This first account will have full administrator privileges.</p>
                 </div>
             )}
-            <form onSubmit={handleSignup} className="space-y-4">
+            <form onSubmit={handleSignup} className="space-y-6">
                <div>
-                  <label className="block text-sm font-medium text-foreground mb-1">Full Name</label>
-                  {/* FIX: Use defined inputClass constant */}
+                  <label className="block text-sm font-medium text-foreground mb-2">Full Name</label>
                   <input className={inputClass} type="text" value={name} onChange={(e) => setName(e.target.value)} required />
                 </div>
               <div>
-                <label className="block text-sm font-medium text-foreground mb-1">Email Address</label>
-                {/* FIX: Use defined inputClass constant */}
+                <label className="block text-sm font-medium text-foreground mb-2">Email Address</label>
                 <input className={inputClass} type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
               </div>
               <div>
-                <label className="block text-sm font-medium text-foreground mb-1">Password</label>
-                {/* FIX: Use defined inputClass constant and fix typo targe -> target */}
+                <label className="block text-sm font-medium text-foreground mb-2">Password</label>
                 <input className={inputClass} type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
               </div>
               <button type="submit" disabled={loading} className={buttonClass}>
@@ -173,7 +170,7 @@ const LoginPage: React.FC = () => {
             <div className="text-center text-sm mt-6">
                 <p className="text-muted-foreground">
                     Already have an account?{' '}
-                    <button onClick={() => { setView('login'); setError(''); }} className="font-medium text-primary hover:text-primary/90">
+                    <button onClick={() => { setView('login'); setError(''); }} className="font-semibold text-primary hover:text-primary/90">
                         Sign In
                     </button>
                 </p>
@@ -183,11 +180,11 @@ const LoginPage: React.FC = () => {
       case 'forgot':
         return (
             <>
-                <h2 className="text-2xl font-bold text-center text-foreground">Reset Password</h2>
+                <h2 className="text-3xl font-bold text-center text-foreground">Reset Password</h2>
                 <p className="text-center text-muted-foreground text-sm mt-2">Enter your email to receive a password reset link.</p>
-                <form onSubmit={handlePasswordReset} className="space-y-4 mt-6">
+                <form onSubmit={handlePasswordReset} className="space-y-6 mt-8">
                     <div>
-                        <label className="block text-sm font-medium text-foreground mb-1">Email Address</label>
+                        <label className="block text-sm font-medium text-foreground mb-2">Email Address</label>
                         <input className={inputClass} type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
                     </div>
                     <button type="submit" disabled={loading} className={buttonClass}>
@@ -197,7 +194,7 @@ const LoginPage: React.FC = () => {
                 <div className="text-center text-sm mt-6">
                     <p className="text-muted-foreground">
                         Remembered your password?{' '}
-                        <button onClick={() => { setView('login'); setError(''); }} className="font-medium text-primary hover:text-primary/90">
+                        <button onClick={() => { setView('login'); setError(''); }} className="font-semibold text-primary hover:text-primary/90">
                             Sign In
                         </button>
                     </p>
@@ -208,16 +205,16 @@ const LoginPage: React.FC = () => {
       default:
         return (
             <>
-                <h2 className="text-2xl font-bold text-center text-foreground">Welcome Back</h2>
-                <form onSubmit={handleLogin} className="space-y-4 mt-6">
+                <h2 className="text-3xl font-bold text-center text-foreground">Welcome Back</h2>
+                <form onSubmit={handleLogin} className="space-y-6 mt-8">
                     <div>
-                        <label className="block text-sm font-medium text-foreground mb-1">Email Address</label>
+                        <label className="block text-sm font-medium text-foreground mb-2">Email Address</label>
                         <input className={inputClass} type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
                     </div>
                     <div>
-                         <div className="flex justify-between items-center">
-                            <label className="block text-sm font-medium text-foreground mb-1">Password</label>
-                            <button type="button" onClick={() => { setView('forgot'); setError(''); }} className="text-sm font-medium text-primary hover:text-primary/90">
+                         <div className="flex justify-between items-center mb-2">
+                            <label className="block text-sm font-medium text-foreground">Password</label>
+                            <button type="button" onClick={() => { setView('forgot'); setError(''); }} className="text-sm font-semibold text-primary hover:text-primary/90">
                                 Forgot?
                             </button>
                         </div>
@@ -231,11 +228,11 @@ const LoginPage: React.FC = () => {
                 {isGoogleSignInSupported && (
                     <>
                         <div className="my-6 flex items-center">
-                            <div className="flex-grow border-t border-border"></div>
-                            <span className="flex-shrink mx-4 text-xs uppercase text-muted-foreground">Or continue with</span>
-                            <div className="flex-grow border-t border-border"></div>
+                            <div className="flex-grow border-t border-border/50"></div>
+                            <span className="flex-shrink mx-4 text-xs uppercase text-muted-foreground">Or</span>
+                            <div className="flex-grow border-t border-border/50"></div>
                         </div>
-                        <button onClick={handleGoogleSignIn} disabled={loading} className="w-full flex items-center justify-center gap-3 py-2.5 px-4 border border-input rounded-lg shadow-sm text-sm font-medium text-foreground bg-card hover:bg-muted">
+                        <button onClick={handleGoogleSignIn} disabled={loading} className="w-full flex items-center justify-center gap-3 py-3 px-4 border border-input rounded-xl shadow-sm text-base font-semibold text-foreground bg-card/80 hover:bg-muted">
                             <GoogleIcon />
                             Sign in with Google
                         </button>
@@ -245,7 +242,7 @@ const LoginPage: React.FC = () => {
                 <div className="text-center text-sm mt-6">
                     <p className="text-muted-foreground">
                         Don't have an account?{' '}
-                        <button onClick={() => { setView('signup'); setError(''); }} className="font-medium text-primary hover:text-primary/90">
+                        <button onClick={() => { setView('signup'); setError(''); }} className="font-semibold text-primary hover:text-primary/90">
                             Sign Up
                         </button>
                     </p>
@@ -256,19 +253,19 @@ const LoginPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4 font-sans">
-        <div className="absolute top-4 right-4">
+    <div className="min-h-screen flex items-center justify-center p-4 font-sans">
+        <div className="absolute top-4 right-4 z-10">
             <ThemeToggle />
         </div>
         <div className="max-w-md w-full">
             <div className="text-center mb-8">
-                <h1 className="text-4xl font-bold text-primary">
+                <h1 className="text-5xl font-bold text-foreground">
                     Pine Stays
                 </h1>
             </div>
-            <div className="bg-card rounded-2xl shadow-xl p-6 sm:p-8 space-y-4 border border-border">
-                {error && <div className="bg-destructive/10 text-destructive text-sm font-medium p-3 rounded-lg text-center">{error}</div>}
-                {message && <div className="bg-primary/10 text-primary text-sm font-medium p-3 rounded-lg text-center">{message}</div>}
+            <div className="glass-ui rounded-2xl shadow-2xl p-8 sm:p-10 space-y-6">
+                {error && <div className="bg-destructive/20 text-destructive-foreground text-sm font-medium p-3 rounded-lg text-center">{error}</div>}
+                {message && <div className="bg-primary/20 text-primary-foreground text-sm font-medium p-3 rounded-lg text-center">{message}</div>}
                 {renderContent()}
             </div>
         </div>
@@ -276,5 +273,4 @@ const LoginPage: React.FC = () => {
   );
 };
 
-// FIX: Add default export for LoginPage component
 export default LoginPage;

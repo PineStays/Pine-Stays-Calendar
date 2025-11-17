@@ -11,67 +11,96 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
       :root {
-        --background: 40 33% 97%;
-        --foreground: 224 71.4% 4.1%;
-        --card: 40 33% 99%;
-        --card-foreground: 224 71.4% 4.1%;
-        --popover: 0 0% 100%;
-        --popover-foreground: 224 71.4% 4.1%;
-        --primary: 45 84% 48%;
-        --primary-foreground: 45 80% 5%;
-        --secondary: 220 13% 91%;
-        --secondary-foreground: 220 14.3% 34.1%;
-        --muted: 220 13% 91%;
-        --muted-foreground: 220 8.9% 46.1%;
-        --accent: 220 13% 91%;
-        --accent-foreground: 220 14.3% 34.1%;
-        --destructive: 0 72% 51%;
-        --destructive-foreground: 210 20% 98%;
-        --border: 220 13% 89%;
-        --input: 220 13% 89%;
-        --ring: 45 84% 48%;
+        --background-start-rgb: 243 245 248;
+        --background-end-rgb: 237 239 243;
+        --foreground: 220 25% 15%;
+        --card: 220 40% 98.5%;
+        --card-foreground: 220 25% 15%;
+        --popover: 220 40% 98.5%;
+        --popover-foreground: 220 25% 15%;
+        --primary: 220 70% 55%;
+        --primary-foreground: 0 0% 100%;
+        --secondary: 220 20% 90%;
+        --secondary-foreground: 220 25% 25%;
+        --muted: 220 20% 94%;
+        --muted-foreground: 220 15% 45%;
+        --accent: 220 20% 92%;
+        --accent-foreground: 220 25% 20%;
+        --destructive: 358 75% 55%;
+        --destructive-foreground: 0 0% 100%;
+        --border: 220 20% 85%;
+        --input: 220 20% 92%;
+        --ring: 220 70% 55%;
         --radius: 0.75rem;
       }
       .dark {
-        --background: 220 14% 9%;
-        --foreground: 210 20% 98%;
-        --card: 220 14% 11%;
-        --card-foreground: 210 20% 98%;
-        --popover: 220 14% 9%;
-        --popover-foreground: 210 20% 98%;
-        --primary: 45 93% 58%;
-        --primary-foreground: 45 80% 5%;
-        --secondary: 215 28% 15%;
-        --secondary-foreground: 210 20% 98%;
-        --muted: 215 28% 15%;
-        --muted-foreground: 217.9 10.6% 64.9%;
-        --accent: 215 28% 15%;
-        --accent-foreground: 210 20% 98%;
-        --destructive: 0 63% 40%;
-        --destructive-foreground: 210 20% 98%;
-        --border: 215 28% 15%;
-        --input: 215 28% 15%;
-        --ring: 45 93% 58%;
+        --background-start-rgb: 20 24 31;
+        --background-end-rgb: 31 36 46;
+        --foreground: 220 20% 90%;
+        --card: 220 30% 20%;
+        --card-foreground: 220 20% 90%;
+        --popover: 220 30% 10%;
+        --popover-foreground: 220 20% 90%;
+        --primary: 220 80% 70%;
+        --primary-foreground: 220 30% 10%;
+        --secondary: 220 20% 25%;
+        --secondary-foreground: 220 20% 85%;
+        --muted: 220 20% 22%;
+        --muted-foreground: 220 15% 65%;
+        --accent: 220 20% 25%;
+        --accent-foreground: 220 20% 90%;
+        --destructive: 0 63% 55%;
+        --destructive-foreground: 0 0% 100%;
+        --border: 220 20% 30%;
+        --input: 220 20% 28%;
+        --ring: 220 80% 70%;
+      }
+
+      body {
+        background-color: rgb(var(--background-start-rgb));
+        background-image: linear-gradient(to bottom right, rgb(var(--background-start-rgb)), rgb(var(--background-end-rgb)));
+        color: hsl(var(--foreground));
+        font-family: 'Inter', sans-serif;
+      }
+      
+      /* Fix iOS input zoom issue */
+      input,
+      textarea,
+      select {
+        font-size: 16px !important;
+      }
+      
+      .glass-ui {
+        background-color: hsla(var(--card), 0.6) !important;
+        backdrop-filter: blur(24px) saturate(180%);
+        border: 1px solid hsla(var(--border), 0.5) !important;
+      }
+      
+      .dark .glass-ui {
+        background-color: hsla(var(--card), 0.4) !important;
+        border: 1px solid hsla(var(--border), 0.3) !important;
       }
 
       /* Custom scrollbar */
       .custom-scrollbar::-webkit-scrollbar {
         height: 8px;
-        background-color: hsl(var(--muted));
+        width: 8px;
+        background-color: hsl(var(--muted) / 0.5);
       }
       .custom-scrollbar::-webkit-scrollbar-thumb {
-        background-color: hsl(var(--secondary-foreground));
+        background-color: hsl(var(--secondary-foreground) / 0.4);
         border-radius: 10px;
-        border: 2px solid hsl(var(--muted));
+        border: 2px solid transparent;
+        background-clip: content-box;
       }
       .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-        background-color: hsl(var(--foreground));
+        background-color: hsl(var(--secondary-foreground) / 0.6);
       }
-       body {
-        background-color: hsl(var(--background));
-        color: hsl(var(--foreground));
-        font-family: 'Inter', sans-serif;
-      }
+
+      /* Custom styles for native date picker to ensure visibility across themes */
+      input[type="date"] { color-scheme: light; }
+      .dark input[type="date"] { color-scheme: dark; }
+      .dark input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1); }
     </style>
      <script>
       // Prevents flash of unstyled content (FOUC) for dark mode
@@ -89,6 +118,9 @@
           extend: {
             fontFamily: {
               sans: ['Inter', 'sans-serif'],
+            },
+            fontSize: {
+              base: '16px', // Ensure base font size is 16px
             },
             colors: {
               border: 'hsl(var(--border))',
@@ -124,13 +156,9 @@
                 DEFAULT: 'hsl(var(--card))',
                 foreground: 'hsl(var(--card-foreground))',
               },
-              brand: {
-                50: '#fefbec', 100: '#fdf3c8', 200: '#fbe691', 300: '#f9d65a', 400: '#f7c32e',
-                500: '#e9a209', 600: '#d48807', 700: '#b2690c', 800: '#925411', 900: '#784512',
-              }
             },
             animation: {
-              'fade-in': 'fadeIn 0.2s ease-out forwards',
+              'fade-in': 'fadeIn 0.3s ease-out forwards',
               'slide-in-from-left': 'slideInFromLeft 0.3s ease-out forwards',
               'slide-out-to-left': 'slideOutToLeft 0.3s ease-in forwards',
             },
