@@ -12,6 +12,7 @@ import SignupPage from './pages/Signup';
 import PendingApprovalPage from './pages/PendingApproval';
 import UnauthorizedPage from './pages/Unauthorized';
 import OwnerDashboard from './pages/OwnerDashboard';
+import PropertyDetails from './pages/PropertyDetails';
 import { db } from './services/databaseService';
 
 const AppRoutes: React.FC = () => {
@@ -21,7 +22,7 @@ const AppRoutes: React.FC = () => {
     // This will check if the database is empty and seed it if needed.
     // The check is implemented inside the database service constructor.
     // We just need to ensure the service is initialized.
-    const _ = db; 
+    db.initialize().catch(err => console.error("DB Init Error:", err));
   }, []);
 
   if (loading) {
@@ -63,6 +64,8 @@ const AppRoutes: React.FC = () => {
   // User is authenticated and active, route based on role
   return (
     <Routes>
+      <Route path="/property/:id" element={<PropertyDetails />} />
+
       {user.role === 'admin' && <Route path="/admin" element={<AdminDashboard />} />}
       {user.role === 'agent' && <Route path="/calendar" element={<AgentPortal />} />}
       {user.role === 'owner' && <Route path="/owner" element={<OwnerDashboard />} />}

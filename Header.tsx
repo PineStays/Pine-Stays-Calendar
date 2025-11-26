@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useTheme } from './Theme';
 import { useAuth } from './hooks/useAuth';
+import { ChevronLeftIcon, Bars3Icon, XMarkIcon } from './Icons';
 
 // --- ICONS ---
 const SunIcon = (props: React.SVGProps<SVGSVGElement>) => (
@@ -16,16 +17,6 @@ const MoonIcon = (props: React.SVGProps<SVGSVGElement>) => (
 const ComputerDesktopIcon = (props: React.SVGProps<SVGSVGElement>) => (
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M9 17.25v1.007a3 3 0 01-.879 2.122L7.5 21h9l-1.621-1.621A3 3 0 0115 18.257V17.25m6-12V15a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 15V5.25A2.25 2.25 0 015.25 3h13.5A2.25 2.25 0 0121 5.25z" />
-    </svg>
-);
-const Bars3Icon = (props: React.SVGProps<SVGSVGElement>) => (
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
-    </svg>
-);
-const XMarkIcon = (props: React.SVGProps<SVGSVGElement>) => (
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
     </svg>
 );
 
@@ -69,9 +60,10 @@ interface HeaderProps {
     subtitle: string;
     navItems?: NavItem[];
     children?: React.ReactNode;
+    onBack?: () => void;
 }
 
-export const Header: React.FC<HeaderProps> = ({ title, subtitle, navItems = [], children }) => {
+export const Header: React.FC<HeaderProps> = ({ title, subtitle, navItems = [], children, onBack }) => {
     const { logout } = useAuth();
     const [isMenuOpen, setIsMenuOpen] = useState(false);
 
@@ -104,6 +96,12 @@ export const Header: React.FC<HeaderProps> = ({ title, subtitle, navItems = [], 
                 <div className="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8">
                     <div className="flex justify-between items-center h-20">
                         <div className="flex items-center gap-x-2 flex-1 min-w-0">
+                            {onBack && (
+                                <button onClick={onBack} className="p-2 -ml-2 mr-1 rounded-full text-muted-foreground hover:bg-muted hover:text-foreground transition-colors" aria-label="Go back">
+                                    <ChevronLeftIcon className="w-6 h-6" />
+                                </button>
+                            )}
+
                             {navItems.length > 0 && (
                                 <div className="md:hidden">
                                     <button onClick={() => setIsMenuOpen(true)} className="p-2.5 -m-2.5 rounded-lg text-muted-foreground hover:bg-muted">

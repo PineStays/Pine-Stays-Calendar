@@ -1,4 +1,3 @@
-
 import { Property, CalendarEntry, CalendarStatus, User, Amenity } from '../types';
 import { INITIAL_AMENITIES } from '../constants';
 // FIX: Use v8 compat version of firebase and db from firebase service
@@ -13,7 +12,11 @@ const docToData = <T>(snapshot: firebase.firestore.DocumentSnapshot): T => ({ id
 class DatabaseService {
 
   constructor() {
-    this.checkAndSeedDatabase();
+    // Initialization is now handled explicitly via the initialize() method
+  }
+
+  async initialize() {
+    await this.checkAndSeedDatabase();
   }
 
   private async checkAndSeedDatabase() {

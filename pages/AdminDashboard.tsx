@@ -1,15 +1,12 @@
-
-
-
-
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { GoogleGenAI } from '@google/genai';
+import { Link } from 'react-router-dom';
 import { Property, CalendarEntry, CalendarStatus, Amenity, User, UserRole, UserStatus } from '../types';
 import { db } from '../services/databaseService';
 import { useAuth } from '../hooks/useAuth';
 import { INITIAL_AMENITIES, LOCATIONS, PROPERTY_TYPES, STATUS_COLORS, STATUSES } from '../constants';
 import { Header } from '../Header';
 import { SparklesIcon, CalendarIcon, BuildingLibraryIcon, UsersIcon, XMarkIcon } from '../Icons';
+import { PropertyFormModal } from '../components/PropertyFormModal';
 
 const formatDate = (date: Date) => {
     const year = date.getFullYear();
@@ -240,7 +237,7 @@ const CalendarManagement: React.FC<CalendarManagementProps> = ({ properties, ref
                     <table className="w-full border-collapse">
                         <thead>
                             <tr className="bg-muted/50">
-                                <th className="sticky left-0 glass-ui p-3 border-b border-border/50 w-32 min-w-[128px] sm:w-40 sm:min-w-[160px] text-left text-sm font-semibold text-foreground z-20">Property</th>
+                                <th className="sticky left-0 glass-ui p-2 sm:p-3 border-b border-border/50 w-24 min-w-[96px] sm:w-40 sm:min-w-[160px] text-left text-sm font-semibold text-foreground z-20">Property</th>
                                 {dates.map(date => (
                                     <th key={date.toISOString()} className="p-2 border-b border-border/50 text-center text-xs font-semibold text-muted-foreground bg-muted/30">
                                         <div className="min-w-[70px]">
@@ -254,7 +251,9 @@ const CalendarManagement: React.FC<CalendarManagementProps> = ({ properties, ref
                         <tbody>
                             {activeProperties.map(prop => (
                                 <tr key={prop.id} className="hover:bg-muted/50">
-                                    <td className="sticky left-0 bg-card/60 hover:bg-muted/50 z-10 p-2.5 border-b border-r border-border/30 font-semibold text-foreground w-32 min-w-[128px] sm:w-40 sm:min-w-[160px]">{prop.name}</td>
+                                    <td className="sticky left-0 bg-card/60 hover:bg-muted/50 z-10 p-2 sm:p-2.5 border-b border-r border-border/30 font-semibold text-foreground w-24 min-w-[96px] sm:w-40 sm:min-w-[160px]">
+                                        <Link to={`/property/${prop.id}`} className="hover:underline text-primary">{prop.name}</Link>
+                                    </td>
                                     {dates.map(date => {
                                         const dateStr = formatDate(date);
                                         const isSelected = selectedCells.some(c => c.propertyId === prop.id && c.date === dateStr);
@@ -365,7 +364,9 @@ const PropertyManagement: React.FC<PropertyManagementProps> = ({ properties, use
                             const owner = users.find(u => u.id === prop.ownerId);
                             return (
                                 <tr key={prop.id} className="bg-card/50 border-b border-border/50 hover:bg-muted/50">
-                                    <th scope="row" className="px-6 py-4 font-medium text-foreground whitespace-nowrap">{prop.name}</th>
+                                    <th scope="row" className="px-6 py-4 font-medium text-foreground whitespace-nowrap">
+                                        <Link to={`/property/${prop.id}`} className="hover:underline text-primary">{prop.name}</Link>
+                                    </th>
                                     <td className="px-6 py-4 hidden md:table-cell">{prop.location}</td>
                                     <td className="px-6 py-4 hidden lg:table-cell">{owner?.name || 'Unassigned'}</td>
                                     <td className="px-6 py-4">
@@ -742,242 +743,6 @@ const IcalImportModal: React.FC<IcalImportModalProps> = ({ property, onClose, on
                         {loading ? 'Importing...' : 'Import Calendar'}
                     </button>
                 </div>
-            </div>
-        </div>
-    );
-};
-
-const generatePropertyCode = (data: Pick<Property, 'location' | 'bedrooms'>) => {
-    if (!data.location || !data.bedrooms) return '';
-    const loc = data.location.slice(0, 3).toUpperCase();
-    const beds = `B${data.bedrooms}`;
-    const random = Math.random().toString(36).substring(2, 6).toUpperCase();
-    return `${loc}-${beds}-${random}`;
-};
-
-interface PropertyFormModalProps {
-    property: Property | null;
-    owners: User[];
-    allAmenities: Amenity[];
-    onClose: () => void;
-    onSave: () => void;
-    refreshParentData: () => void;
-}
-const PropertyFormModal: React.FC<PropertyFormModalProps> = ({ property, owners, allAmenities, onClose, onSave, refreshParentData }) => {
-    const [formData, setFormData] = useState<Omit<Property, 'id'>>({
-        name: '', type: 'Villas', location: 'Lonavala', capacity: 8, basePrice: 20000,
-        photoLink: '', pdfLink: '', amenities: [], description: '', status: 'active',
-        propertyCode: '', bedrooms: 3, bathrooms: 3, area: '', maxCapacity: 10,
-        poolType: 'none', videoLink: '', extraGuestCost: 0, houseRules: '', menuCardLink: '', ownerId: '',
-        securityDeposit: 0,
-        ...(property || {}),
-    });
-    const [loading, setLoading] = useState(false);
-    const [isGenerating, setIsGenerating] = useState(false);
-    const [isAddingOwner, setIsAddingOwner] = useState(false);
-    const [customAmenity, setCustomAmenity] = useState('');
-
-    useEffect(() => {
-        if (property) {
-           const {id, ...rest} = property;
-           setFormData(rest);
-        } else if (formData.location || formData.bedrooms) {
-           setFormData(prev => ({ ...prev, propertyCode: generatePropertyCode(prev) }));
-        }
-    }, [property, formData.location, formData.bedrooms]);
-
-
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-        const { name, value } = e.target;
-        setFormData(prev => ({...prev, [name]: ['capacity', 'basePrice', 'bedrooms', 'bathrooms', 'maxCapacity', 'extraGuestCost', 'securityDeposit'].includes(name) ? Number(value) : value }));
-    };
-
-    const handleAmenityChange = (amenity: Amenity) => {
-        setFormData(prev => ({ ...prev, amenities: prev.amenities.includes(amenity) ? prev.amenities.filter(a => a !== amenity) : [...prev.amenities, amenity] }));
-    };
-    
-    const handleAddCustomAmenity = async () => {
-        const newAmenity = customAmenity.trim();
-        if (newAmenity && !allAmenities.find(a => a.toLowerCase() === newAmenity.toLowerCase())) {
-            await db.addAmenity(newAmenity);
-            refreshParentData(); // This will re-fetch amenities and update the prop
-            handleAmenityChange(newAmenity); // Check the new amenity
-            setCustomAmenity('');
-        }
-    };
-
-    const handleGenerateDescription = async () => {
-        setIsGenerating(true);
-        try {
-            const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-            const prompt = `Generate a compelling, short marketing description for a vacation rental property.
-            Property Name: "${formData.name}" Type: ${formData.type} in ${formData.location}
-            Sleeps: ${formData.capacity} to ${formData.maxCapacity}, Key Amenities: ${formData.amenities.join(', ')}
-            The description should be inviting and highlight the key features. Keep it under 60 words.`;
-            
-            const response = await ai.models.generateContent({model: 'gemini-2.5-flash', contents: prompt});
-            setFormData(prev => ({...prev, description: response.text.trim() }));
-
-        } catch (error) {
-            console.error("AI description generation failed:", error);
-            alert("Failed to generate description. Please check your API key and try again.");
-        } finally {
-            setIsGenerating(false);
-        }
-    };
-
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setLoading(true);
-        if (property) {
-            await db.updateProperty(property.id, formData);
-        } else {
-            await db.addProperty(formData);
-        }
-        setLoading(false);
-        onSave();
-    };
-
-    const handleOwnerSave = () => {
-        setIsAddingOwner(false);
-        refreshParentData();
-    };
-
-    return (
-         <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-0 sm:p-4 animate-fade-in">
-            <div className="glass-ui rounded-none sm:rounded-2xl shadow-2xl w-full h-full sm:w-full sm:max-w-4xl sm:max-h-[90vh] overflow-y-auto custom-scrollbar">
-                <form onSubmit={handleSubmit} className="space-y-6 p-4 sm:p-8">
-                     <div className="flex justify-between items-center sticky top-0 glass-ui -m-8 p-6 z-10 border-b border-border/50 mb-6">
-                        <h2 className="text-xl font-bold text-foreground">{property ? 'Edit Property' : 'Add New Property'}</h2>
-                        <button type="button" onClick={onClose} className="p-2 rounded-full hover:bg-muted"><XMarkIcon className="w-6 h-6"/></button>
-                     </div>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-x-6 gap-y-4 border-b border-border/50 pb-6">
-                        <div className="md:col-span-2">
-                            <label className="block text-sm font-medium text-foreground mb-2">Name</label>
-                            <input name="name" value={formData.name} onChange={handleChange} className={baseInputClass} required />
-                        </div>
-                         <div>
-                            <label className="block text-sm font-medium text-foreground mb-2">Property Code</label>
-                            <input name="propertyCode" value={formData.propertyCode} onChange={handleChange} className={baseInputClass} required/>
-                        </div>
-                         <div className="md:col-span-2">
-                            <label className="block text-sm font-medium text-foreground mb-2">Owner</label>
-                            <div className="flex items-center space-x-2">
-                                <select name="ownerId" value={formData.ownerId} onChange={handleChange} className={`${baseInputClass} flex-grow`}>
-                                    <option value="">Unassigned</option>
-                                    {owners.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
-                                </select>
-                                <button type="button" onClick={() => setIsAddingOwner(true)} className={`${baseButtonClass} bg-secondary text-secondary-foreground hover:bg-secondary/80 text-sm`}>Add New</button>
-                            </div>
-                        </div>
-                         <div>
-                            <label className="block text-sm font-medium text-foreground mb-2">Location</label>
-                            <select name="location" value={formData.location} onChange={handleChange} className={baseInputClass}>
-                                {LOCATIONS.map(l => <option key={l} value={l}>{l}</option>)}
-                             </select>
-                        </div>
-                        <div>
-                             <label className="block text-sm font-medium text-foreground mb-2">Status</label>
-                             <select name="status" value={formData.status} onChange={handleChange} className={baseInputClass}>
-                                <option value="active">Active</option>
-                                <option value="inactive">Inactive</option>
-                             </select>
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-foreground mb-2">Type</label>
-                            <select name="type" value={formData.type} onChange={handleChange} className={baseInputClass}>
-                                {PROPERTY_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-                            </select>
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-foreground mb-2">Bedrooms / Bathrooms</label>
-                            <div className="flex space-x-2">
-                                <input name="bedrooms" type="number" value={formData.bedrooms} onChange={handleChange} className={baseInputClass} required/>
-                                <input name="bathrooms" type="number" value={formData.bathrooms} onChange={handleChange} className={baseInputClass} required/>
-                            </div>
-                        </div>
-                         <div>
-                            <label className="block text-sm font-medium text-foreground mb-2">Area (e.g. 4000 sq ft)</label>
-                            <input name="area" value={formData.area} onChange={handleChange} className={baseInputClass} />
-                        </div>
-                         <div>
-                            <label className="block text-sm font-medium text-foreground mb-2">Base / Max Occupancy</label>
-                            <div className="flex space-x-2">
-                                <input name="capacity" type="number" value={formData.capacity} onChange={handleChange} className={baseInputClass} required/>
-                                <input name="maxCapacity" type="number" value={formData.maxCapacity} onChange={handleChange} className={baseInputClass} required/>
-                            </div>
-                        </div>
-                         <div>
-                            <label className="block text-sm font-medium text-foreground mb-2">Pool Type</label>
-                            <select name="poolType" value={formData.poolType} onChange={handleChange} className={baseInputClass}>
-                                <option value="none">None</option>
-                                <option value="private">Private</option>
-                                <option value="shared">Shared</option>
-                             </select>
-                        </div>
-                         <div>
-                            <label className="block text-sm font-medium text-foreground mb-2">Base Price (INR)</label>
-                            <input name="basePrice" type="number" value={formData.basePrice} onChange={handleChange} className={baseInputClass} required/>
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-foreground mb-2">Extra Guest Cost (INR)</label>
-                            <input name="extraGuestCost" type="number" value={formData.extraGuestCost} onChange={handleChange} className={baseInputClass} />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-foreground mb-2">Refundable Security Deposit (INR)</label>
-                            <input name="securityDeposit" type="number" value={formData.securityDeposit} onChange={handleChange} className={baseInputClass} />
-                        </div>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4 border-b border-border/50 pb-6">
-                        <div className="md:col-span-2">
-                            <label className="block text-sm font-medium text-foreground mb-2">Amenities</label>
-                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-y-3 gap-x-4 mt-2 border border-input/50 rounded-lg p-4 bg-background/50">
-                                {allAmenities.map(amenity => (
-                                    <label key={amenity} className="flex items-center space-x-3 text-sm text-foreground font-medium">
-                                        <input type="checkbox" checked={formData.amenities.includes(amenity)} onChange={() => handleAmenityChange(amenity)} className="h-4 w-4 rounded text-primary focus:ring-ring" />
-                                        <span>{amenity}</span>
-                                    </label>
-                                ))}
-                            </div>
-                            <div className="flex items-center space-x-2 mt-2">
-                                <input type="text" value={customAmenity} onChange={e => setCustomAmenity(e.target.value)} placeholder="Add new amenity..." className={`${baseInputClass} flex-grow`} />
-                                <button type="button" onClick={handleAddCustomAmenity} className={`${baseButtonClass} bg-secondary text-secondary-foreground hover:bg-secondary/80 text-sm`}>Add</button>
-                            </div>
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-foreground mb-2">Links (URL)</label>
-                            <div className="space-y-2">
-                                <input name="photoLink" value={formData.photoLink} onChange={handleChange} className={baseInputClass} placeholder="Photo Link"/>
-                                <input name="pdfLink" value={formData.pdfLink} onChange={handleChange} className={baseInputClass} placeholder="PDF Brochure Link"/>
-                                <input name="videoLink" value={formData.videoLink} onChange={handleChange} className={baseInputClass} placeholder="Video Link"/>
-                                <input name="menuCardLink" value={formData.menuCardLink} onChange={handleChange} className={baseInputClass} placeholder="Menu Card Link"/>
-                            </div>
-                        </div>
-                         <div className="space-y-4">
-                             <div>
-                                 <div className="flex justify-between items-center mb-2">
-                                    <label className="block text-sm font-medium text-foreground">Description</label>
-                                    <button type="button" onClick={handleGenerateDescription} disabled={isGenerating} className="flex items-center space-x-1 text-sm font-semibold text-primary hover:text-primary/90 disabled:opacity-50">
-                                        <SparklesIcon />
-                                        <span>{isGenerating ? 'Generating...' : 'Generate with AI'}</span>
-                                    </button>
-                                </div>
-                                <textarea name="description" value={formData.description} onChange={handleChange} rows={5} className={baseInputClass} />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-foreground mb-2">House Rules</label>
-                                <textarea name="houseRules" value={formData.houseRules} onChange={handleChange} rows={4} className={baseInputClass} />
-                            </div>
-                         </div>
-                    </div>
-                    
-                    <div className="mt-6 flex justify-end space-x-3 sticky bottom-0 glass-ui -m-8 p-6 z-10 border-t border-border/50">
-                        <button type="button" onClick={onClose} className={`${baseButtonClass} bg-secondary text-secondary-foreground hover:bg-secondary/80 text-sm`}>Cancel</button>
-                        <button type="submit" disabled={loading} className={`${baseButtonClass} bg-primary text-primary-foreground hover:bg-primary/90 disabled:bg-primary/50 text-sm`}>{loading ? 'Saving...' : 'Save Property'}</button>
-                    </div>
-                </form>
-                {isAddingOwner && <UserFormModal onClose={() => setIsAddingOwner(false)} onSave={handleOwnerSave} initialRole="owner" />}
             </div>
         </div>
     );

@@ -1,8 +1,5 @@
-
-
-
-
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { Link } from 'react-router-dom';
 import { Property, CalendarEntry } from '../types';
 import { db } from '../services/databaseService';
 import { useAuth } from '../hooks/useAuth';
@@ -195,7 +192,7 @@ const OwnerDashboard: React.FC = () => {
                             <table className="w-full border-collapse">
                                 <thead>
                                     <tr className="bg-muted/50">
-                                        <th className="sticky left-0 glass-ui p-3 border-b border-border/50 w-32 min-w-[128px] sm:w-40 sm:min-w-[160px] text-left text-sm font-semibold text-foreground z-20">Property</th>
+                                        <th className="sticky left-0 glass-ui p-2 sm:p-3 border-b border-border/50 w-24 min-w-[96px] sm:w-40 sm:min-w-[160px] text-left text-sm font-semibold text-foreground z-20">Property</th>
                                         {dates.map(date => (
                                             <th key={date.toISOString()} className="p-2 border-b border-border/50 text-center text-xs font-semibold text-muted-foreground bg-muted/30">
                                                 <div className="min-w-[70px]">
@@ -209,7 +206,9 @@ const OwnerDashboard: React.FC = () => {
                                 <tbody>
                                     {properties.map(prop => (
                                         <tr key={prop.id} className="hover:bg-muted/50">
-                                            <td className="sticky left-0 bg-card/60 hover:bg-muted/50 z-10 p-2.5 border-b border-r border-border/30 font-semibold text-foreground w-32 min-w-[128px] sm:w-40 sm:min-w-[160px]">{prop.name}</td>
+                                            <td className="sticky left-0 bg-card/60 hover:bg-muted/50 z-10 p-2 sm:p-2.5 border-b border-r border-border/30 font-semibold text-foreground w-24 min-w-[96px] sm:w-40 sm:min-w-[160px]">
+                                                <Link to={`/property/${prop.id}`} className="hover:underline text-primary">{prop.name}</Link>
+                                            </td>
                                             {dates.map(date => {
                                                 const dateStr = formatDate(date);
                                                 const entry = calendarData.get(`${prop.id}-${dateStr}`);

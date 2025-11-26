@@ -1,16 +1,5 @@
-
-
-
-
-
-
-
-
-
-
-
-
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { Link } from 'react-router-dom';
 import { Property, CalendarEntry, CalendarStatus, Location, PropertyType, Amenity } from '../types';
 import { db } from '../services/databaseService';
 import { useAuth } from '../hooks/useAuth';
@@ -488,8 +477,8 @@ const AgentPortal: React.FC = () => {
                         <table className="w-full border-collapse">
                             <thead>
                                 <tr className="bg-muted/50">
-                                    <th className="sticky left-0 glass-ui p-3 border-b border-r border-border/50 w-24 min-w-[96px] sm:w-32 sm:min-w-[128px] text-left text-sm font-semibold text-foreground z-30">Property</th>
-                                    <th className="sticky left-[96px] sm:left-[128px] glass-ui p-3 border-b border-r border-border/50 w-16 min-w-[64px] text-center text-sm font-semibold text-foreground z-20">Beds</th>
+                                    <th className="sticky left-0 glass-ui p-2 sm:p-3 border-b border-r border-border/50 w-20 min-w-[80px] sm:w-32 sm:min-w-[128px] text-left text-sm font-semibold text-foreground z-30">Property</th>
+                                    <th className="sticky left-[80px] sm:left-[128px] glass-ui p-2 sm:p-3 border-b border-r border-border/50 w-12 min-w-[48px] sm:w-16 sm:min-w-[64px] text-center text-sm font-semibold text-foreground z-20">Beds</th>
                                     {dates.map(date => {
                                         const isToday = date.toDateString() === new Date().toDateString();
                                         return (
@@ -506,8 +495,10 @@ const AgentPortal: React.FC = () => {
                             <tbody className="text-sm">
                                 {filteredProperties.map(prop => (
                                     <tr key={prop.id} className="hover:bg-muted/50">
-                                        <td className="sticky left-0 bg-card/60 hover:bg-muted/50 z-10 p-2.5 border-b border-r border-border/30 font-semibold text-foreground w-24 min-w-[96px] sm:w-32 sm:min-w-[128px] truncate" title={prop.name}>{prop.name}</td>
-                                        <td className="sticky left-[96px] sm:left-[128px] bg-card/60 hover:bg-muted/50 z-10 p-2.5 border-b border-r border-border/30 text-center text-muted-foreground">{prop.bedrooms}</td>
+                                        <td className="sticky left-0 bg-card/60 hover:bg-muted/50 z-10 p-2 sm:p-2.5 border-b border-r border-border/30 font-semibold text-foreground w-20 min-w-[80px] sm:w-32 sm:min-w-[128px] truncate" title={prop.name}>
+                                            <Link to={`/property/${prop.id}`} className="hover:underline text-primary">{prop.name}</Link>
+                                        </td>
+                                        <td className="sticky left-[80px] sm:left-[128px] bg-card/60 hover:bg-muted/50 z-10 p-2 sm:p-2.5 border-b border-r border-border/30 text-center text-muted-foreground w-12 min-w-[48px] sm:w-16 sm:min-w-[64px]">{prop.bedrooms}</td>
                                         {dates.map(date => {
                                             const dateStr = formatDate(date);
                                             const isSelected = selectedCells.some(c => c.propertyId === prop.id && c.date === dateStr);
